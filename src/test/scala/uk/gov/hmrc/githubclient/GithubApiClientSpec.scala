@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.gitclient
+package uk.gov.hmrc.githubclient
 
 import com.github.tomakehurst.wiremock.http.RequestMethod.{GET, HEAD}
 import org.scalatest.Matchers

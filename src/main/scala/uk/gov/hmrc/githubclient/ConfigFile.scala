@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.gitclient
+package uk.gov.hmrc.githubclient
 
 import java.nio.file.Path
 

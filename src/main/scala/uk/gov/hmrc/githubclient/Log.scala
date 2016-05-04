@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.gitclient
+package uk.gov.hmrc.githubclient
 
 import org.slf4j
 import play.api.{Logger, LoggerLike}
