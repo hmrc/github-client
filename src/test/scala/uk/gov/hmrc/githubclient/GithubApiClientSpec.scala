@@ -109,21 +109,20 @@ class GithubApiClientSpec extends WireMockSpec with ScalaFutures with Matchers w
     }
   }
 
-  "GitHubAPIClient.repoContainsFolder" should {
-    "retrun true if it contains the folder" in {
-      val folderName = "folder"
+  "GitHubAPIClient.repoContainsContent" should {
 
+    "return true if it contains content at the given path" in {
+      val folderName = "folder"
       givenGitHubExpects(
         method = HEAD,
         url = s"${testEndpoints.repoContents("OrgA", "repoA")}/$folderName",
         willRespondWith = (200, None)
       )
 
-      githubApiClient.repoContainsFolder(folderName, "repoA", "OrgA").futureValue shouldBe true
-
+      githubApiClient.repoContainsContent(folderName, "repoA", "OrgA").futureValue shouldBe true
     }
 
-    "retrun false if it does not contain the folder" in {
+    "return false if it does not contain content at the given path" in {
       val folderName = "folder"
 
       givenGitHubExpects(
@@ -132,9 +131,7 @@ class GithubApiClientSpec extends WireMockSpec with ScalaFutures with Matchers w
         willRespondWith = (404, None)
       )
 
-      githubApiClient.repoContainsFolder(folderName, "repoA", "OrgA").futureValue shouldBe false
-
+      githubApiClient.repoContainsContent(folderName, "repoA", "OrgA").futureValue shouldBe false
     }
-
   }
 }

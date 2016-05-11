@@ -51,7 +51,7 @@ class GithubApiClient(gitConfig : GitApiConfig) {
     httpClient.get[List[GhRepository]](url)
   }
 
-  def repoContainsFolder(folderName: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = {
+  def repoContainsContent(folderName: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = {
     val url: String = s"${githubEndpoints.repoContents(orgName, repoName)}/$folderName"
     httpClient.head(url).map(result => {
       Log.info(s"Got $result when checking for $folderName folder in $orgName/$repoName from $url")
