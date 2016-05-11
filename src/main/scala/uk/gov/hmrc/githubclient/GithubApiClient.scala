@@ -51,10 +51,10 @@ class GithubApiClient(gitConfig : GitApiConfig) {
     httpClient.get[List[GhRepository]](url)
   }
 
-  def repoContainsContent(folderName: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = {
-    val url: String = s"${githubEndpoints.repoContents(orgName, repoName)}/$folderName"
+  def repoContainsContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = {
+    val url: String = s"${githubEndpoints.repoContents(orgName, repoName)}/$path"
     httpClient.head(url).map(result => {
-      Log.info(s"Got $result when checking for $folderName folder in $orgName/$repoName from $url")
+      Log.info(s"Got $result when checking for $path folder in $orgName/$repoName from $url")
       result == 200
     })
   }
