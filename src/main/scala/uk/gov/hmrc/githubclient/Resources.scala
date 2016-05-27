@@ -19,21 +19,21 @@ package uk.gov.hmrc.githubclient
 import java.util.Date
 
 import org.joda.time.DateTime
-
-import play.api.libs.json.{JsPath, Reads, Writes, Json}
+import play.api.libs.json.Json
 
 case class GhOrganisation(login: String, id: Int = 0)
 
 case class GhTeam(name: String, id: Long)
 
-case class GhRepository(name: String, id: Long, html_url: String, owner: GhOrganisation, fork: Boolean = false)
+case class GhRepository(name: String, id: Long, html_url: String,  fork: Boolean = false)
 
-case class GhRepoRelease(id: Long, tag_name: String, created_at: DateTime)
+case class GhRepoRelease(id : Long, tag_name:String, created_at : DateTime)
 
 
 object GhRepoRelease {
   implicit val formats = Json.format[GhRepoRelease]
 }
+
 
 
 object GhTeam {
