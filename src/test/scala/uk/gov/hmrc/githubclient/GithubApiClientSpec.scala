@@ -93,6 +93,10 @@ class GithubApiClientSpec extends WireMockSpec with ScalaFutures with Matchers w
         s"""[{
            |"id": 1,
            |"name": "repoA",
+           |"owner": {
+           |   "login": "HMRC",
+           |   "id": 108
+           |},
            |"private": false,
            |"html_url": "http://some/html/url",
            |"fork": true
@@ -104,7 +108,9 @@ class GithubApiClientSpec extends WireMockSpec with ScalaFutures with Matchers w
         willRespondWith = (200, Some(reposJson))
       )
 
-      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", 1, "http://some/html/url", true))
+      githubApiClient.getReposForTeam(1).futureValue shouldBe List(
+        GhRepository("repoA", 1, "http://some/html/url", GhOrganisation("HMRC", 108), true)
+      )
 
     }
   }

@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.githubclient
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{Future, ExecutionContext}
 
 class GithubApiClient(gitConfig : GitApiConfig) {
 

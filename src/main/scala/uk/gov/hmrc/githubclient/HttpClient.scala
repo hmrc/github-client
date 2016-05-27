@@ -16,10 +16,9 @@
 
 package uk.gov.hmrc.githubclient
 
-import java.util.concurrent.{ExecutorService, Executors}
+import java.time.Duration
+import java.util.concurrent._
 
-import com.ning.http.client.AsyncHttpClientConfig.Builder
-import play.Logger
 import play.api.libs.json.{JsValue, Json, Reads}
 import play.api.libs.ws.ning.{NingAsyncHttpClientConfigBuilder, NingWSClient}
 import play.api.libs.ws.{DefaultWSClientConfig, WSAuthScheme, WSRequestHolder, WSResponse}
@@ -27,17 +26,42 @@ import play.api.libs.ws.{DefaultWSClientConfig, WSAuthScheme, WSRequestHolder, W
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
+
 object WsClient {
-  private val asyncBuilder: Builder = new Builder()
-  private val tp: ExecutorService = Executors.newCachedThreadPool()
-  asyncBuilder.setExecutorService(tp)
 
-  private val builder: NingAsyncHttpClientConfigBuilder =
-    new NingAsyncHttpClientConfigBuilder(
-      config = new DefaultWSClientConfig(/*connectionTimeout = Some(120 * 1000)*/),
-      builder = asyncBuilder)
+  val corePoolSize = Integer.getInteger("github.client.threadPoolCoreSize", 10)
+  val maximumPoolSize = Integer.getInteger("github.client.threadPoolMaxSize", 10)
+  val keepAliveTime = Integer.getInteger("github.client.threadPoolKeepAliveTimeInSec", 60).toLong
 
-  val client = new NingWSClient(builder.build())
+  def asyncHttpClientConfig = {
+
+    println(s"github.client.threadPoolCoreSize : $corePoolSize")
+    println(s"github.client.threadPoolMaxSize : $maximumPoolSize")
+    println(s"github.client.threadPoolKeepAliveTimeInSec : $keepAliveTime")
+
+    val executor = new ThreadPoolExecutor(
+      corePoolSize, //corePoolSize
+      maximumPoolSize, //maximumPoolSize
+      keepAliveTime, //keepAliveTime
+      TimeUnit.SECONDS, //unit
+      new LinkedBlockingDeque[Runnable](), //workQueue
+      Executors.defaultThreadFactory(), //threadFactory
+      new ThreadPoolExecutor.CallerRunsPolicy() //rejected task handler
+    )
+    executor.allowCoreThreadTimeOut(true)
+
+
+    val clientConfig = new DefaultWSClientConfig()
+    val secureDefaults = new NingAsyncHttpClientConfigBuilder(clientConfig).build()
+    val builder = new com.ning.http.client.AsyncHttpClientConfig.Builder(secureDefaults)
+    builder.setCompressionEnabled(true)
+    builder.setExecutorService(executor)
+    builder.setIdleConnectionTimeoutInMs(Duration.ofMinutes(1).toMillis.toInt)
+
+    builder.build()
+  }
+
+  val client = new NingWSClient(asyncHttpClientConfig)
 
 }
 
@@ -74,24 +98,25 @@ class HttpClient(user: String, apiKey: String) {
 
 
   def post[T](url: String, body: Option[String] = None)(implicit ec: ExecutionContext, r: Reads[T]): Future[T] = {
-    postWithStringResponse(url, body).map(x =>  Json.parse(x).as[T])
+    postWithStringResponse(url, body).map(x => Json.parse(x).as[T])
   }
-  
+
   def postWithStringResponse(url: String, body: Option[String] = None)(implicit ec: ExecutionContext): Future[String] = {
-    withErrorHandling("POST", url, body.map(Json.parse)){
-        case rs if rs.status >= 200 && rs.status < 300 => rs.body
-        case _@rs =>
-          val msg = s"Didn't get expected status code when writing to Github. Got status ${rs.status}: POST $url ${rs.body}"
-          Log.error(msg)
-          throw new RuntimeException(msg)
-      }
+    withErrorHandling("POST", url, body.map(Json.parse)) {
+      case rs if rs.status >= 200 && rs.status < 300 => rs.body
+      case _@rs =>
+        val msg = s"Didn't get expected status code when writing to Github. Got status ${rs.status}: POST $url ${rs.body}"
+        Log.error(msg)
+        throw new RuntimeException(msg)
     }
+  }
 
 
-  private def withErrorHandling[T](method: String, url: String, body : Option[JsValue] = None)(f: WSResponse => T)(implicit ec: ExecutionContext): Future[T] = {
+  private def withErrorHandling[T](method: String, url: String, body: Option[JsValue] = None)(f: WSResponse => T)(implicit ec: ExecutionContext): Future[T] = {
     buildCall(method, url, body).execute().transform(
       f,
-      _ => throw new RuntimeException(s"Error connecting  $url")
+      e =>
+        throw new RuntimeException(s"Error connecting  $url", e)
     )
   }
 
@@ -99,7 +124,6 @@ class HttpClient(user: String, apiKey: String) {
     val req = ws.url(url)
       .withMethod(method)
       .withAuth(user, apiKey, WSAuthScheme.BASIC)
-      .withQueryString("client_id" -> user, "client_secret" -> apiKey)
       .withHeaders("content-type" -> "application/json")
 
     body.map { b =>
