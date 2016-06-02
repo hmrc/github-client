@@ -17,7 +17,9 @@
 package uk.gov.hmrc.githubclient
 
 import java.net.URL
+import java.util
 
+import org.eclipse.egit.github.core.{RepositoryContents, Repository}
 import org.eclipse.egit.github.core.client.GitHubClient
 import org.eclipse.egit.github.core.service.{ContentsService, OrganizationService, RepositoryService, TeamService}
 
@@ -27,16 +29,9 @@ class GithubApiClient(gitConfig: GitApiConfig) {
 
   import scala.collection.JavaConversions._
 
-  val gitHubUrl = new URL(gitConfig.apiUrl)
-
-  println("using new github URL")
-
-  private[githubclient] val client = new GitHubClient(gitHubUrl.getHost, gitHubUrl.getPort, gitHubUrl.getProtocol)
-    .setCredentials(gitConfig.user, gitConfig.key)
+  private[githubclient] val client = GitHubClient.createClient(gitConfig.apiUrl).setOAuth2Token(gitConfig.key)
 
   // all these could be mocked and tested
-  private[githubclient] val httpClient = new HttpClient(gitConfig.user, gitConfig.key)
-  private[githubclient] val githubEndpoints = new GithubApiEndpoints(gitConfig.apiUrl)
   private[githubclient] val orgService = new OrganizationService(client)
   private[githubclient] val teamService = new TeamService(client)
   private[githubclient] val repositoryService = new RepositoryService(client)
@@ -64,7 +59,12 @@ class GithubApiClient(gitConfig: GitApiConfig) {
 
   def repoContainsContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = Future {
 
-    contentsService.getContents(repositoryService.getRepository(orgName, repoName)).contains(path)
+    import scala.collection.JavaConversions._
+
+    val repository = repositoryService.getRepository(orgName, repoName)
+
+    contentsService.getContents(repository).exists(_.getPath == path)
+
 
   }
 

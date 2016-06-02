@@ -17,39 +17,31 @@
 package uk.gov.hmrc.githubclient
 
 import com.github.tomakehurst.wiremock.http.RequestMethod.{GET, HEAD}
-import org.scalatest.Matchers
+import org.eclipse.egit.github.core.service.{OrganizationService, TeamService, RepositoryService, ContentsService}
+import org.scalatest.mock.MockitoSugar
+import org.scalatest.{WordSpec, Matchers}
 import org.scalatest.concurrent.ScalaFutures
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class GithubApiClientSpec extends WireMockSpec with ScalaFutures with Matchers with DefaultPatienceConfig {
+class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures with Matchers with DefaultPatienceConfig {
 
+  val mockOrgService: OrganizationService = mock[OrganizationService]
+  val mockTeamService: TeamService = mock[TeamService]
+  val mockRepositoryService: RepositoryService = mock[RepositoryService]
+  val mockContentsService: ContentsService = mock[ContentsService]
 
-  val testEndpoints = new GithubApiEndpoints(endpointMockUrl)
+  def githubApiClient = new GithubApiClient(GitApiConfig("", "", "")) {
 
-  def githubApiClient = new GithubApiClient(GitApiConfig("", "", endpointMockUrl))
+    override private[githubclient] val orgService: OrganizationService = _
+    override private[githubclient] val teamService: TeamService = _
+    override private[githubclient] val repositoryService: RepositoryService = _
+    override private[githubclient] val contentsService: ContentsService = _
+  }
 
 
   "GitHubAPIClient.getOrganisations" should {
     "get all organizations" in {
-
-      val getOrganizationResponse =
-        s"""[
-           |{"login": "ORG1",
-           |"id": 1
-           |},
-           |{
-           |"login": "ORG2",
-           |"id": 2
-           |}
-           |]""".stripMargin
-
-
-      givenGitHubExpects(
-        method = GET,
-        url = testEndpoints.organisations,
-        willRespondWith = (200, Some(getOrganizationResponse))
-      )
 
       githubApiClient.getOrganisations.futureValue shouldBe List(GhOrganisation("ORG1", 1), GhOrganisation("ORG2", 2))
 
@@ -67,9 +59,9 @@ class GithubApiClientSpec extends WireMockSpec with ScalaFutures with Matchers w
            |"description": "Ateam",
            |"permission": "admin",
            |"url": "${testEndpoints.apiBaseUrl}/api/v3/teams/1",
-           |"repositories_url": "${testEndpoints.apiBaseUrl}/api/v3/teams/1/repos",
-           |"privacy": "secret"
-           |}]""".stripMargin
+                                                 |"repositories_url": "${testEndpoints.apiBaseUrl}/api/v3/teams/1/repos",
+                                                                                                    |"privacy": "secret"
+                                                                                                    |}]""".stripMargin
 
 
       givenGitHubExpects(
