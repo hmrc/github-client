@@ -36,7 +36,8 @@ private object AppDependencies {
     "commons-io" % "commons-io" % "2.4",
     "org.apache.httpcomponents" % "httpcore" % "4.3.2",
     "org.apache.httpcomponents" % "httpclient" % "4.3.5",
-    "io.spray" %% "spray-json" % "1.3.2"
+    "io.spray" %% "spray-json" % "1.3.2",
+    "org.eclipse.mylyn.github" % "org.eclipse.egit.github.core" % "2.1.5"
   )
 
 

@@ -16,50 +16,57 @@
 
 package uk.gov.hmrc.githubclient
 
-import scala.concurrent.{Future, ExecutionContext}
+import java.net.URL
 
-class GithubApiClient(gitConfig : GitApiConfig) {
+import org.eclipse.egit.github.core.client.GitHubClient
+import org.eclipse.egit.github.core.service.{ContentsService, OrganizationService, RepositoryService, TeamService}
 
-  val httpClient = new HttpClient(gitConfig.user, gitConfig.key)
+import scala.concurrent.{ExecutionContext, Future}
 
-  val githubEndpoints = new GithubApiEndpoints(gitConfig.apiUrl)
+class GithubApiClient(gitConfig: GitApiConfig) {
 
-  def getOrganisations(implicit ec: ExecutionContext) = {
+  import scala.collection.JavaConversions._
 
-    val url: String = githubEndpoints.organisations
+  val gitHubUrl = new URL(gitConfig.apiUrl)
 
-    httpClient.get[List[GhOrganisation]](url).map(result => {
-      Log.info(s"Got ${result.length} organisations from $url")
-      result
-    })
+  println("using new github URL")
+
+  private[githubclient] val client = new GitHubClient(gitHubUrl.getHost, gitHubUrl.getPort, gitHubUrl.getProtocol)
+    .setCredentials(gitConfig.user, gitConfig.key)
+
+  // all these could be mocked and tested
+  private[githubclient] val httpClient = new HttpClient(gitConfig.user, gitConfig.key)
+  private[githubclient] val githubEndpoints = new GithubApiEndpoints(gitConfig.apiUrl)
+  private[githubclient] val orgService = new OrganizationService(client)
+  private[githubclient] val teamService = new TeamService(client)
+  private[githubclient] val repositoryService = new RepositoryService(client)
+  private[githubclient] val contentsService = new ContentsService(client)
+
+  def getOrganisations(implicit ec: ExecutionContext): Future[List[GhOrganisation]] = Future {
+    orgService.getOrganizations.toList.map { go =>
+      GhOrganisation(go.getLogin, go.getId)
+    }
   }
 
-  def getTeamsForOrganisation(org: String)(implicit ec: ExecutionContext) = {
+  def getTeamsForOrganisation(org: String)(implicit ec: ExecutionContext): Future[List[GhTeam]] = Future {
 
-    val url: String = githubEndpoints.teamsForOrganisation(org)
-
-    httpClient.get[List[GhTeam]](url).map(result => {
-      Log.info(s"Got ${result.length} teams for $org from $url")
-      result
-    })
+    teamService.getTeams(org).toList.map { gt =>
+      GhTeam(gt.getName, gt.getId)
+    }
   }
 
-  def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext) = {
+  def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] = Future {
 
-    val url: String = githubEndpoints.reposForTeam(teamId)
-
-    httpClient.get[List[GhRepository]](url)
+    teamService.getRepositories(teamId.toInt).toList.map { gr =>
+      GhRepository(gr.getName, gr.getId, gr.getHtmlUrl, gr.isFork)
+    }
   }
 
-  def repoContainsContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = {
-    val url: String = s"${githubEndpoints.repoContents(orgName, repoName)}/$path"
-    httpClient.head(url).map(result => {
-      Log.info(s"Got $result when checking for $path folder in $orgName/$repoName from $url")
-      result == 200
-    })
-  }
+  def repoContainsContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = Future {
 
-  def close() = httpClient.close()
+    contentsService.getContents(repositoryService.getRepository(orgName, repoName)).contains(path)
+
+  }
 
 }
 
