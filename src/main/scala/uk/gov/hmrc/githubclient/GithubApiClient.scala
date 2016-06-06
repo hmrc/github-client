@@ -16,26 +16,22 @@
 
 package uk.gov.hmrc.githubclient
 
-import java.net.URL
-import java.util
-
-import org.eclipse.egit.github.core.{RepositoryContents, Repository}
+import org.eclipse.egit.github.core.IRepositoryIdProvider
 import org.eclipse.egit.github.core.client.GitHubClient
-import org.eclipse.egit.github.core.service.{ContentsService, OrganizationService, RepositoryService, TeamService}
+import org.eclipse.egit.github.core.service._
+import play.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class GithubApiClient(gitConfig: GitApiConfig) {
+trait GithubApiClient {
 
   import scala.collection.JavaConversions._
 
-  private[githubclient] val client = GitHubClient.createClient(gitConfig.apiUrl).setOAuth2Token(gitConfig.key)
-
-  // all these could be mocked and tested
-  private[githubclient] val orgService = new OrganizationService(client)
-  private[githubclient] val teamService = new TeamService(client)
-  private[githubclient] val repositoryService = new RepositoryService(client)
-  private[githubclient] val contentsService = new ContentsService(client)
+  val orgService: OrganizationService
+  val teamService: TeamService
+  val repositoryService: RepositoryService
+  val contentsService: ContentsService
+  val releaseService: ReleaseService
 
   def getOrganisations(implicit ec: ExecutionContext): Future[List[GhOrganisation]] = Future {
     orgService.getOrganizations.toList.map { go =>
@@ -57,16 +53,43 @@ class GithubApiClient(gitConfig: GitApiConfig) {
     }
   }
 
+  def getReleases(org: String, repoName: String)(implicit ec: ExecutionContext): Future[List[GhRepoRelease]] = Future {
+
+    releaseService.getReleases(org, repoName)
+  }
+
   def repoContainsContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = Future {
 
-    import scala.collection.JavaConversions._
-
-    val repository = repositoryService.getRepository(orgName, repoName)
-
-    contentsService.getContents(repository).exists(_.getPath == path)
-
+    try {
+      val idProvider = new IRepositoryIdProvider {
+        val generateId: String = orgName + "/" + repoName
+      }
+      contentsService.getContents(idProvider).exists(_.getPath == path)
+    } catch {
+      case e =>
+        Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${e.getMessage}")
+        false
+    }
 
   }
 
+}
+
+object GithubApiClient {
+
+  def apply(apiUrl: String, apiToken: String): GithubApiClient = {
+
+    val client: GitHubClient = GitHubClient.createClient(apiUrl).setOAuth2Token(apiToken)
+
+    new GithubApiClient {
+      val orgService: OrganizationService = new OrganizationService(client)
+      val teamService: TeamService = new TeamService(client)
+      val repositoryService: RepositoryService = new RepositoryService(client)
+      val contentsService: ContentsService = new ContentsService(client)
+      val releaseService: ReleaseService = new ReleaseService(client)
+    }
+
+
+  }
 }
 

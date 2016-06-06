@@ -17,31 +17,42 @@
 package uk.gov.hmrc.githubclient
 
 import com.github.tomakehurst.wiremock.http.RequestMethod.{GET, HEAD}
+import org.eclipse.egit.github.core._
 import org.eclipse.egit.github.core.service.{OrganizationService, TeamService, RepositoryService, ContentsService}
+import org.mockito.Matchers.any
+import org.mockito.{ArgumentCaptor, Mockito}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{WordSpec, Matchers}
 import org.scalatest.concurrent.ScalaFutures
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures with Matchers with DefaultPatienceConfig {
+class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures with Matchers{
 
   val mockOrgService: OrganizationService = mock[OrganizationService]
   val mockTeamService: TeamService = mock[TeamService]
   val mockRepositoryService: RepositoryService = mock[RepositoryService]
   val mockContentsService: ContentsService = mock[ContentsService]
+  val mockReleaseService: ReleaseService = mock[ReleaseService]
 
-  def githubApiClient = new GithubApiClient(GitApiConfig("", "", "")) {
+  def githubApiClient = new GithubApiClient {
 
-    override private[githubclient] val orgService: OrganizationService = _
-    override private[githubclient] val teamService: TeamService = _
-    override private[githubclient] val repositoryService: RepositoryService = _
-    override private[githubclient] val contentsService: ContentsService = _
+    val orgService: OrganizationService = mockOrgService
+    val teamService: TeamService = mockTeamService
+    val repositoryService: RepositoryService = mockRepositoryService
+    val contentsService: ContentsService = mockContentsService
+    val releaseService = mockReleaseService
   }
 
+  import scala.collection.JavaConversions._
 
   "GitHubAPIClient.getOrganisations" should {
+
     "get all organizations" in {
+
+      val users: java.util.List[User] = List(new User().setLogin("ORG1").setId(1), new User().setLogin("ORG2").setId(2))
+
+      Mockito.when(mockOrgService.getOrganizations).thenReturn(users)
 
       githubApiClient.getOrganisations.futureValue shouldBe List(GhOrganisation("ORG1", 1), GhOrganisation("ORG2", 2))
 
@@ -51,29 +62,11 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
   "GitHubAPIClient.getTeamsForOrganisation" should {
     "get all team for organization" in {
 
-      val teamsJson =
-        s"""[{
-           |"name": "Ateam",
-           |"id": 1,
-           |"slug": "Ateam",
-           |"description": "Ateam",
-           |"permission": "admin",
-           |"url": "${testEndpoints.apiBaseUrl}/api/v3/teams/1",
-                                                 |"repositories_url": "${testEndpoints.apiBaseUrl}/api/v3/teams/1/repos",
-                                                                                                    |"privacy": "secret"
-                                                                                                    |}]""".stripMargin
+      val teams: java.util.List[Team] = List(new Team().setName("Ateam").setId(1))
 
-
-      givenGitHubExpects(
-        method = GET,
-        url = testEndpoints.teamsForOrganisation(
-          "ORG1"),
-        willRespondWith = (200, Some(teamsJson))
-      )
+      Mockito.when(mockTeamService.getTeams("ORG1")).thenReturn(teams)
 
       githubApiClient.getTeamsForOrganisation("ORG1").futureValue shouldBe List(GhTeam("Ateam", 1))
-
-
     }
   }
 
@@ -81,23 +74,13 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
   "GitHubAPIClient.getReposForTeam" should {
     "get all team for organization" in {
 
-      val reposJson =
-        s"""[{
-           |"id": 1,
-           |"name": "repoA",
-           |"private": false,
-           |"html_url": "http://some/html/url",
-           |"fork": true
-           |}]""".stripMargin
-
-      givenGitHubExpects(
-        method = GET,
-        url = testEndpoints.reposForTeam(1),
-        willRespondWith = (200, Some(reposJson))
+      val repos: java.util.List[Repository] = List(
+        new Repository().setName("repoA").setId(1).setHtmlUrl("http://some/html/url").setFork(true)
       )
 
-      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", 1, "http://some/html/url", true))
+      Mockito.when(mockTeamService.getRepositories(1)).thenReturn(repos)
 
+      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", 1, "http://some/html/url", true))
     }
   }
 
@@ -105,23 +88,32 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
 
     "return true if it contains content at the given path" in {
       val folderName = "folder"
-      givenGitHubExpects(
-        method = HEAD,
-        url = s"${testEndpoints.repoContents("OrgA", "repoA")}/$folderName",
-        willRespondWith = (200, None)
+
+      val contents: java.util.List[RepositoryContents] = List(
+        new RepositoryContents().setPath("folder"),
+        new RepositoryContents().setPath("someOtherfolder")
       )
 
+      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider])).thenReturn(contents)
+
       githubApiClient.repoContainsContent(folderName, "repoA", "OrgA").futureValue shouldBe true
+
+      val captor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
+
+      Mockito.verify(mockContentsService).getContents(captor.capture())
+
+      captor.getValue.generateId() shouldBe "OrgA/repoA"
+
     }
 
     "return false if it does not contain content at the given path" in {
       val folderName = "folder"
 
-      givenGitHubExpects(
-        method = HEAD,
-        url = s"${testEndpoints.repoContents("OrgA", "repoA")}/$folderName",
-        willRespondWith = (404, None)
+      val contents: java.util.List[RepositoryContents] = List(
+        new RepositoryContents().setPath("someOtherfolder")
       )
+
+      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider])).thenReturn(contents)
 
       githubApiClient.repoContainsContent(folderName, "repoA", "OrgA").futureValue shouldBe false
     }
