@@ -64,7 +64,7 @@ trait GithubApiClient {
       val idProvider = new IRepositoryIdProvider {
         val generateId: String = orgName + "/" + repoName
       }
-      contentsService.getContents(idProvider).exists(_.getPath == path)
+      contentsService.getContents(idProvider, path).nonEmpty
     } catch {
       case e =>
         Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${e.getMessage}")
@@ -88,7 +88,6 @@ object GithubApiClient {
       val contentsService: ContentsService = new ContentsService(client)
       val releaseService: ReleaseService = new ReleaseService(client)
     }
-
 
   }
 }

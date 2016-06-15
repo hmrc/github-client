@@ -18,8 +18,6 @@ package uk.gov.hmrc.githubclient
 
 import java.util.Date
 
-import play.api.libs.json.Json
-
 case class GhOrganisation(login: String, id: Int = 0)
 
 case class GhTeam(name: String, id: Long)
@@ -28,20 +26,3 @@ case class GhRepository(name: String, id: Long, htmlUrl: String, fork: Boolean =
 
 case class GhRepoRelease(id: Long, tagName: String, createdAt: Date)
 
-
-object GhRepoRelease {
-  implicit val formats = Json.format[GhRepoRelease]
-}
-
-
-object GhTeam {
-  implicit val formats = Json.format[GhTeam]
-}
-
-object GhOrganisation {
-  implicit val formats = Json.format[GhOrganisation]
-}
-
-object GhRepository {
-  implicit val formats = Json.format[GhRepository]
-}

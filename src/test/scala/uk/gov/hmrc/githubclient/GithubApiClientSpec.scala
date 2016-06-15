@@ -20,6 +20,7 @@ import com.github.tomakehurst.wiremock.http.RequestMethod.{GET, HEAD}
 import org.eclipse.egit.github.core._
 import org.eclipse.egit.github.core.service.{OrganizationService, TeamService, RepositoryService, ContentsService}
 import org.mockito.Matchers.any
+import org.mockito.Matchers.same
 import org.mockito.{ArgumentCaptor, Mockito}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{WordSpec, Matchers}
@@ -87,35 +88,31 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
   "GitHubAPIClient.repoContainsContent" should {
 
     "return true if it contains content at the given path" in {
-      val folderName = "folder"
+      val path = "folder"
 
       val contents: java.util.List[RepositoryContents] = List(
         new RepositoryContents().setPath("folder"),
         new RepositoryContents().setPath("someOtherfolder")
       )
 
-      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider])).thenReturn(contents)
+      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider], same(path))).thenReturn(contents)
 
-      githubApiClient.repoContainsContent(folderName, "repoA", "OrgA").futureValue shouldBe true
+      githubApiClient.repoContainsContent(path, "repoA", "OrgA").futureValue shouldBe true
 
       val captor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
 
-      Mockito.verify(mockContentsService).getContents(captor.capture())
+      Mockito.verify(mockContentsService).getContents(captor.capture(), same(path))
 
       captor.getValue.generateId() shouldBe "OrgA/repoA"
 
     }
 
     "return false if it does not contain content at the given path" in {
-      val folderName = "folder"
+      val path = "folder"
 
-      val contents: java.util.List[RepositoryContents] = List(
-        new RepositoryContents().setPath("someOtherfolder")
-      )
+      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider], same(path))).thenReturn(List())
 
-      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider])).thenReturn(contents)
-
-      githubApiClient.repoContainsContent(folderName, "repoA", "OrgA").futureValue shouldBe false
+      githubApiClient.repoContainsContent(path, "repoA", "OrgA").futureValue shouldBe false
     }
   }
 }
