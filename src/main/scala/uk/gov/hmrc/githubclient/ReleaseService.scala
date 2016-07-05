@@ -17,8 +17,9 @@
 package uk.gov.hmrc.githubclient
 
 import com.google.gson.reflect.TypeToken
+import org.eclipse.egit.github.core.{Repository, RepositoryId}
 import org.eclipse.egit.github.core.client.{GitHubClient, PagedRequest}
-import org.eclipse.egit.github.core.service.GitHubService
+import org.eclipse.egit.github.core.service.{GitHubService, RepositoryService}
 import org.eclipse.egit.github.core.client.IGitHubConstants.SEGMENT_REPOS
 
 
@@ -34,5 +35,6 @@ class ReleaseService(client: GitHubClient) extends GitHubService(client) {
     getAll(request).toList
   }
 
-
 }
+
+

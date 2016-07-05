@@ -16,19 +16,18 @@
 
 package uk.gov.hmrc.githubclient
 
-import org.eclipse.egit.github.core.IRepositoryIdProvider
-import org.eclipse.egit.github.core.client.GitHubClient
+import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, RepositoryHook}
+import org.eclipse.egit.github.core.client.{GitHubClient, RequestException}
 import org.eclipse.egit.github.core.service._
 import play.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
 
 trait GithubApiClient {
-
   import scala.collection.JavaConversions._
 
   val orgService: OrganizationService
-  val teamService: TeamService
+  val teamService: ExtendedTeamService
   val repositoryService: RepositoryService
   val contentsService: ContentsService
   val releaseService: ReleaseService
@@ -40,55 +39,97 @@ trait GithubApiClient {
   }
 
   def getTeamsForOrganisation(org: String)(implicit ec: ExecutionContext): Future[List[GhTeam]] = Future {
-
     teamService.getTeams(org).toList.map { gt =>
       GhTeam(gt.getName, gt.getId)
     }
   }
 
   def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] = Future {
-
     teamService.getRepositories(teamId.toInt).toList.map { gr =>
       GhRepository(gr.getName, gr.getId, gr.getHtmlUrl, gr.isFork)
     }
   }
 
   def getReleases(org: String, repoName: String)(implicit ec: ExecutionContext): Future[List[GhRepoRelease]] = Future {
-
     releaseService.getReleases(org, repoName)
   }
 
   def repoContainsContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = Future {
-
     try {
       val idProvider = new IRepositoryIdProvider {
         val generateId: String = orgName + "/" + repoName
       }
       contentsService.getContents(idProvider, path).nonEmpty
     } catch {
-      case e =>
+      case e: Throwable =>
         Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${e.getMessage}")
         false
+    }
+  }
+
+  def containsRepo(orgName: String, repoName: String)(implicit ec: ExecutionContext): Future[Boolean] = Future {
+    try {
+      repositoryService.getRepository(orgName, repoName) != null
+    }
+    catch { case ex: RequestException =>
+      Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${ex.getMessage}")
+      if (ex.getMessage.contains("404")) false
+      else throw ex;
     }
 
   }
 
+  def teamId(orgName: String, team: String)(implicit ec: ExecutionContext): Future[Option[Int]] = Future {
+    teamService.getTeams(orgName).toList.find(t => t.getName == team).map(_.getId)
+  }
+
+  def createRepo(orgName: String, repoName: String)(implicit ec: ExecutionContext) = Future {
+    val newRepo = repositoryService.createRepository(
+      orgName,
+      new Repository().setName(repoName).setPrivate(false).setHasIssues(true).setHasWiki(true).setHasDownloads(true))
+
+    newRepo.getCloneUrl
+  }
+
+  def addRepoToTeam(orgName: String, repoName: String, teamId: Int)(implicit ec: ExecutionContext) : Future[Unit] = Future {
+    val idProvider = new IRepositoryIdProvider {
+      val generateId: String = orgName + "/" + repoName
+    }
+
+    teamService.addRepository(teamId, idProvider)
+  }
+
+  def createHook(orgName: String,
+                 repoName: String,
+                 hookName: String,
+                 config: Map[String, String],
+                 active: Boolean = true)(implicit ec: ExecutionContext) : Future[Unit] = Future {
+
+    val idProvider = new IRepositoryIdProvider {
+      val generateId: String = orgName + "/" + repoName
+    }
+
+    repositoryService.createHook(
+      idProvider,
+      new RepositoryHook().setName(hookName).setConfig(config).setActive(active))
+  }
 }
 
 object GithubApiClient {
 
   def apply(apiUrl: String, apiToken: String): GithubApiClient = {
-
-    val client: GitHubClient = GitHubClient.createClient(apiUrl).setOAuth2Token(apiToken)
+    val client: ExtendedGitHubClient = ExtendedGitHubClient(apiUrl)
+      .setOAuth2Token(apiToken)
+      .asInstanceOf[ExtendedGitHubClient]
 
     new GithubApiClient {
       val orgService: OrganizationService = new OrganizationService(client)
-      val teamService: TeamService = new TeamService(client)
+      val teamService: ExtendedTeamService = new ExtendedTeamService(client)
       val repositoryService: RepositoryService = new RepositoryService(client)
       val contentsService: ContentsService = new ContentsService(client)
       val releaseService: ReleaseService = new ReleaseService(client)
     }
-
   }
+
 }
 

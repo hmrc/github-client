@@ -16,22 +16,25 @@
 
 package uk.gov.hmrc.githubclient
 
-import com.github.tomakehurst.wiremock.http.RequestMethod.{GET, HEAD}
+import java.io.IOException
+
 import org.eclipse.egit.github.core._
-import org.eclipse.egit.github.core.service.{OrganizationService, TeamService, RepositoryService, ContentsService}
-import org.mockito.Matchers.any
-import org.mockito.Matchers.same
+import org.eclipse.egit.github.core.client.RequestException
+import org.eclipse.egit.github.core.service.{ContentsService, OrganizationService, RepositoryService, TeamService}
+import org.mockito.Matchers.{any, same}
+import org.mockito.Matchers.{eq => meq}
 import org.mockito.{ArgumentCaptor, Mockito}
-import org.scalatest.mock.MockitoSugar
-import org.scalatest.{WordSpec, Matchers}
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.mock.MockitoSugar
+import org.scalatest.{Matchers, WordSpec}
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures with Matchers{
 
   val mockOrgService: OrganizationService = mock[OrganizationService]
-  val mockTeamService: TeamService = mock[TeamService]
+  val mockTeamService: ExtendedTeamService = mock[ExtendedTeamService]
   val mockRepositoryService: RepositoryService = mock[RepositoryService]
   val mockContentsService: ContentsService = mock[ContentsService]
   val mockReleaseService: ReleaseService = mock[ReleaseService]
@@ -39,7 +42,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
   def githubApiClient = new GithubApiClient {
 
     val orgService: OrganizationService = mockOrgService
-    val teamService: TeamService = mockTeamService
+    val teamService: ExtendedTeamService = mockTeamService
     val repositoryService: RepositoryService = mockRepositoryService
     val contentsService: ContentsService = mockContentsService
     val releaseService = mockReleaseService
@@ -115,4 +118,110 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       githubApiClient.repoContainsContent(path, "repoA", "OrgA").futureValue shouldBe false
     }
   }
+
+  "GitHubAPIClient.containsRepo" should {
+    val owner = "HMRC"
+    val repoName = "test-repo"
+
+    "return true when the repo exists" in {
+      val repository = new Repository().setName(repoName)
+
+      Mockito.when(mockRepositoryService.getRepository(owner, repoName)).thenReturn(repository)
+
+      githubApiClient.containsRepo(owner, repoName).futureValue shouldBe true
+    }
+
+    "return false when the repo does not exist" in {
+      val repository = new Repository().setName(repoName)
+
+      Mockito.when(mockRepositoryService.getRepository(owner, repoName)).thenReturn(null)
+
+      githubApiClient.containsRepo(owner, repoName).futureValue shouldBe false
+    }
+
+    "throw exception when egit encounters an error" in {
+      val repository = new Repository().setName(repoName)
+
+      Mockito.when(mockRepositoryService.getRepository(owner, repoName)).thenThrow(new IOException("something went wrong"))
+
+      intercept[RequestException] {
+        githubApiClient.containsRepo(owner, repoName).futureValue
+      }
+    }
+  }
+
+  "GitHubAPIClient.teamId" should {
+    val organisation = "HMRC"
+    val teamName = "test-team"
+
+    "find a team ID for a team name when the team exists" in {
+      val team = new Team().setId(123).setName(teamName)
+      val anotherTeam = new Team().setId(321).setName("another-team")
+
+      Mockito.when(mockTeamService.getTeams(organisation)).thenReturn(List(team, anotherTeam))
+
+      githubApiClient.teamId(organisation, teamName).futureValue.get shouldBe 123
+    }
+
+    "return None when the team does not exist" in {
+      val anotherTeam = new Team().setId(321).setName("another-team")
+
+      Mockito.when(mockTeamService.getTeams(organisation)).thenReturn(List(anotherTeam))
+
+      githubApiClient.teamId(organisation, teamName).futureValue shouldBe None
+    }
+  }
+
+  "GitHubAPIClient.createRepo" should {
+    val organisation = "HMRC"
+    val repoName = "test-repo"
+    val cloneUrl = s"git@github.com:hmrc/$repoName.git"
+
+    "return the clone url for a successfully created repo" in {
+      val repository = new Repository().setName(repoName).setCloneUrl(cloneUrl)
+
+      Mockito.when(mockRepositoryService.createRepository(same(organisation), any[Repository])).thenReturn(repository)
+
+      val createdUrl = githubApiClient.createRepo(organisation,repoName).futureValue
+      createdUrl shouldBe cloneUrl
+    }
+  }
+
+  "GitHubAPIClient.addRepoToTeam" should {
+    val organisation = "HMRC"
+    val repoName = "test-repo"
+
+    "add a repository to a team in" in {
+      githubApiClient.addRepoToTeam(organisation, repoName, 99)
+
+      val captor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
+      Mockito.verify(mockTeamService).addRepository(meq(99), captor.capture())
+
+      captor.getValue.generateId() shouldBe "HMRC/test-repo"
+    }
+  }
+
+  "GitHubAPIClient.createHook" should {
+    val organisation = "HMRC"
+    val repoName = "test-repo"
+    val hookName = "jenkins"
+    val config = Map("jenkins_hook_url" -> "url")
+
+    "add the given hook to the repository" in {
+      githubApiClient.createHook(organisation, repoName, hookName, config)
+
+      val captor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
+      val hookCapture = ArgumentCaptor.forClass(classOf[RepositoryHook])
+
+      Mockito.verify(mockRepositoryService).createHook(captor.capture(), hookCapture.capture())
+
+      captor.getValue.generateId() shouldBe "HMRC/test-repo"
+
+      val hook = hookCapture.getValue
+      hook.getConfig()("jenkins_hook_url") shouldBe "url"
+      hook.getName shouldBe "jenkins"
+      hook.isActive shouldBe true
+    }
+  }
+
 }
