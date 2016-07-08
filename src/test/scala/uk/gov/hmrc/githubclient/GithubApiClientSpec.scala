@@ -142,9 +142,9 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
     "throw exception when egit encounters an error" in {
       val repository = new Repository().setName(repoName)
 
-      Mockito.when(mockRepositoryService.getRepository(owner, repoName)).thenThrow(new IOException("something went wrong"))
+      Mockito.when(mockRepositoryService.getRepository(owner, repoName)).thenThrow(new RequestException(new RequestError(), 500))
 
-      intercept[RequestException] {
+      intercept[Exception] {
         githubApiClient.containsRepo(owner, repoName).futureValue
       }
     }
