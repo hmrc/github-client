@@ -23,36 +23,40 @@ import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.{ContentsService, OrganizationService, RepositoryService, TeamService}
 import org.mockito.Matchers.{any, same}
 import org.mockito.Matchers.{eq => meq}
+import org.mockito.invocation.InvocationOnMock
+import org.mockito.stubbing.Answer
 import org.mockito.{ArgumentCaptor, Mockito}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.{BeforeAndAfterEach, Matchers, OneInstancePerTest, WordSpec}
 
+import scala.collection.immutable.Stack
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Future, Promise}
 
-class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures with Matchers{
+class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures with Matchers with BeforeAndAfterEach with OneInstancePerTest {
 
-  val mockOrgService: OrganizationService = mock[OrganizationService]
-  val mockTeamService: ExtendedTeamService = mock[ExtendedTeamService]
-  val mockRepositoryService: RepositoryService = mock[RepositoryService]
-  val mockContentsService: ContentsService = mock[ContentsService]
-  val mockReleaseService: ReleaseService = mock[ReleaseService]
+  trait Setup {
+    val mockOrgService: OrganizationService = mock[OrganizationService]
+    val mockTeamService: ExtendedTeamService = mock[ExtendedTeamService]
+    val mockRepositoryService: RepositoryService = mock[RepositoryService]
+    val mockContentsService: ContentsService = mock[ContentsService]
+    val mockReleaseService: ReleaseService = mock[ReleaseService]
 
-  def githubApiClient = new GithubApiClient {
-
-    val orgService: OrganizationService = mockOrgService
-    val teamService: ExtendedTeamService = mockTeamService
-    val repositoryService: RepositoryService = mockRepositoryService
-    val contentsService: ContentsService = mockContentsService
-    val releaseService = mockReleaseService
+    def githubApiClient = new GithubApiClient {
+      val orgService: OrganizationService = mockOrgService
+      val teamService: ExtendedTeamService = mockTeamService
+      val repositoryService: RepositoryService = mockRepositoryService
+      val contentsService: ContentsService = mockContentsService
+      val releaseService = mockReleaseService
+    }
   }
 
   import scala.collection.JavaConversions._
 
   "GitHubAPIClient.getOrganisations" should {
 
-    "get all organizations" in {
+    "get all organizations" in new Setup {
 
       val users: java.util.List[User] = List(new User().setLogin("ORG1").setId(1), new User().setLogin("ORG2").setId(2))
 
@@ -64,7 +68,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
   }
 
   "GitHubAPIClient.getTeamsForOrganisation" should {
-    "get all team for organization" in {
+    "get all team for organization" in new Setup {
 
       val teams: java.util.List[Team] = List(new Team().setName("Ateam").setId(1))
 
@@ -74,9 +78,8 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
     }
   }
 
-
   "GitHubAPIClient.getReposForTeam" should {
-    "get all team for organization" in {
+    "get all team for organization" in new Setup {
 
       val repos: java.util.List[Repository] = List(
         new Repository().setName("repoA").setId(1).setHtmlUrl("http://some/html/url").setFork(true)
@@ -88,9 +91,11 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
     }
   }
 
+  val captor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
+
   "GitHubAPIClient.repoContainsContent" should {
 
-    "return true if it contains content at the given path" in {
+    "return true if it contains content at the given path" in new Setup {
       val path = "folder"
 
       val contents: java.util.List[RepositoryContents] = List(
@@ -102,15 +107,12 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
 
       githubApiClient.repoContainsContent(path, "repoA", "OrgA").futureValue shouldBe true
 
-      val captor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
-
       Mockito.verify(mockContentsService).getContents(captor.capture(), same(path))
 
       captor.getValue.generateId() shouldBe "OrgA/repoA"
-
     }
 
-    "return false if it does not contain content at the given path" in {
+    "return false if it does not contain content at the given path" in new Setup {
       val path = "folder"
 
       Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider], same(path))).thenReturn(List())
@@ -123,7 +125,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
     val owner = "HMRC"
     val repoName = "test-repo"
 
-    "return true when the repo exists" in {
+    "return true when the repo exists" in new Setup {
       val repository = new Repository().setName(repoName)
 
       Mockito.when(mockRepositoryService.getRepository(owner, repoName)).thenReturn(repository)
@@ -131,7 +133,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       githubApiClient.containsRepo(owner, repoName).futureValue shouldBe true
     }
 
-    "return false when the repo does not exist" in {
+    "return false when the repo does not exist" in new Setup {
       val repository = new Repository().setName(repoName)
 
       Mockito.when(mockRepositoryService.getRepository(owner, repoName)).thenReturn(null)
@@ -139,7 +141,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       githubApiClient.containsRepo(owner, repoName).futureValue shouldBe false
     }
 
-    "throw exception when egit encounters an error" in {
+    "throw exception when egit encounters an error" in new Setup {
       val repository = new Repository().setName(repoName)
 
       Mockito.when(mockRepositoryService.getRepository(owner, repoName)).thenThrow(new RequestException(new RequestError(), 500))
@@ -154,7 +156,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
     val organisation = "HMRC"
     val teamName = "test-team"
 
-    "find a team ID for a team name when the team exists" in {
+    "find a team ID for a team name when the team exists" in new Setup {
       val team = new Team().setId(123).setName(teamName)
       val anotherTeam = new Team().setId(321).setName("another-team")
 
@@ -163,7 +165,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       githubApiClient.teamId(organisation, teamName).futureValue.get shouldBe 123
     }
 
-    "return None when the team does not exist" in {
+    "return None when the team does not exist" in new Setup {
       val anotherTeam = new Team().setId(321).setName("another-team")
 
       Mockito.when(mockTeamService.getTeams(organisation)).thenReturn(List(anotherTeam))
@@ -177,7 +179,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
     val repoName = "test-repo"
     val cloneUrl = s"git@github.com:hmrc/$repoName.git"
 
-    "return the clone url for a successfully created repo" in {
+    "return the clone url for a successfully created repo" in new Setup {
       val repository = new Repository().setName(repoName).setCloneUrl(cloneUrl)
 
       Mockito.when(mockRepositoryService.createRepository(same(organisation), any[Repository])).thenReturn(repository)
@@ -188,18 +190,27 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
   }
 
   "GitHubAPIClient.addRepoToTeam" should {
-    val organisation = "HMRC"
-    val repoName = "test-repo"
+    "add a repository to a team in" in new Setup {
 
-    "add a repository to a team in" in {
+      val organisation = "HMRC"
+      val repoName = "test-repo"
+
+      var teamId: Int = 0
+      var idProvider: IRepositoryIdProvider = null
+
+      case class Arguments(teamId: Int, idProvider: IRepositoryIdProvider)
+      val (future, answer) = buildAnswer2(Arguments.apply _)
+
+      Mockito.when(mockTeamService.addRepository(any(), any())).thenAnswer(answer)
+
       githubApiClient.addRepoToTeam(organisation, repoName, 99)
 
-      val captor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
-      Mockito.verify(mockTeamService).addRepository(meq(99), captor.capture())
-
-      captor.getValue.generateId() shouldBe "HMRC/test-repo"
+      var args = future.futureValue
+      args.teamId shouldBe 99
+      args.idProvider.generateId() shouldBe "HMRC/test-repo"
     }
   }
+
 
   "GitHubAPIClient.createHook" should {
     val organisation = "HMRC"
@@ -207,21 +218,44 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
     val hookName = "jenkins"
     val config = Map("jenkins_hook_url" -> "url")
 
-    "add the given hook to the repository" in {
+    "add the given hook to the repository" in new Setup {
       githubApiClient.createHook(organisation, repoName, hookName, config)
 
-      val captor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
-      val hookCapture = ArgumentCaptor.forClass(classOf[RepositoryHook])
+      case class Arguments(idProvider: IRepositoryIdProvider, hook: RepositoryHook)
+      val (future, answer) = buildAnswer2(Arguments.apply _)
 
-      Mockito.verify(mockRepositoryService).createHook(captor.capture(), hookCapture.capture())
+      Mockito.when(mockRepositoryService.createHook(any(), any())).thenAnswer(answer)
 
-      captor.getValue.generateId() shouldBe "HMRC/test-repo"
+      githubApiClient.addRepoToTeam(organisation, repoName, 99)
 
-      val hook = hookCapture.getValue
-      hook.getConfig()("jenkins_hook_url") shouldBe "url"
-      hook.getName shouldBe "jenkins"
-      hook.isActive shouldBe true
+      val args = future.futureValue
+
+      args.idProvider.generateId() shouldBe "HMRC/test-repo"
+
+      args.hook.getConfig()("jenkins_hook_url") shouldBe "url"
+      args.hook.getName shouldBe "jenkins"
+      args.hook.isActive shouldBe true
     }
   }
 
+  // NB -> This is a workaround for a bug in Mockito whereby a test file can't contain more than one captor of the same type
+  def buildAnswer2[A, B, R](function: (A, B) => R) = {
+    val promise = Promise[R]()
+    val answer = new Answer[Unit] {
+      override def answer(invocationOnMock: InvocationOnMock): Unit = {
+        val rawArgs = invocationOnMock.getArguments
+
+        val curried = convert(rawArgs) { function.curried }
+        val arguments = convert(rawArgs.tail) { curried }
+
+        promise.success(arguments)
+      }
+
+      def convert[I, O](args: Seq[AnyRef])(fn: I => O): O = {
+        fn(args.head.asInstanceOf[I])
+      }
+    }
+
+    (promise.future, answer)
+  }
 }
