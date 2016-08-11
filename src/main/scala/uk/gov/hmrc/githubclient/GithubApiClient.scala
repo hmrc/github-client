@@ -54,16 +54,26 @@ trait GithubApiClient {
     releaseService.getReleases(org, repoName)
   }
 
+  def getTags(org: String, repoName: String)(implicit ec: ExecutionContext): Future[List[String]] = Future {
+
+    repositoryService.getTags(repositoryId(repoName, org)).map(_.getName).toList
+
+  }
+
+
   def repoContainsContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = Future {
     try {
-      val idProvider = new IRepositoryIdProvider {
-        val generateId: String = orgName + "/" + repoName
-      }
-      contentsService.getContents(idProvider, path).nonEmpty
+      contentsService.getContents(repositoryId(repoName, orgName), path).nonEmpty
     } catch {
       case e: Throwable =>
         Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${e.getMessage}")
         false
+    }
+  }
+
+  def repositoryId(repoName: String, orgName: String): IRepositoryIdProvider= {
+    new IRepositoryIdProvider {
+      val generateId: String = orgName + "/" + repoName
     }
   }
 
@@ -92,11 +102,7 @@ trait GithubApiClient {
   }
 
   def addRepoToTeam(orgName: String, repoName: String, teamId: Int)(implicit ec: ExecutionContext) : Future[Unit] = Future {
-    val idProvider = new IRepositoryIdProvider {
-      val generateId: String = orgName + "/" + repoName
-    }
-
-    teamService.addRepository(teamId, idProvider)
+    teamService.addRepository(teamId, repositoryId(repoName, orgName))
   }
 
   def createHook(orgName: String,

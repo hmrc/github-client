@@ -17,9 +17,10 @@
 package uk.gov.hmrc.githubclient
 
 import java.io.IOException
+import java.util
 
 import org.eclipse.egit.github.core._
-import org.eclipse.egit.github.core.client.RequestException
+import org.eclipse.egit.github.core.client.{GitHubRequest, GitHubResponse, RequestException}
 import org.eclipse.egit.github.core.service.{ContentsService, OrganizationService, RepositoryService, TeamService}
 import org.mockito.Matchers.{any, same}
 import org.mockito.Matchers.{eq => meq}
@@ -65,6 +66,28 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       githubApiClient.getOrganisations.futureValue shouldBe List(GhOrganisation("ORG1", 1), GhOrganisation("ORG2", 2))
 
     }
+  }
+
+  "GitHubAPIClient.getTags" should {
+
+    "returns list of tags" in new Setup {
+
+      val tags: java.util.List[RepositoryTag] = List(new RepositoryTag().setName("tag1"), new RepositoryTag().setName("tag2"))
+
+      Mockito.when(mockRepositoryService.getTags(any[IRepositoryIdProvider])).thenReturn(tags)
+
+      val captor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
+
+      val resultTags: Future[List[String]] = githubApiClient.getTags("orgA", "repoA")
+
+      resultTags.futureValue shouldBe List("tag1", "tag2")
+
+      Mockito.verify(mockRepositoryService).getTags(captor.capture())
+
+      captor.getValue.generateId() shouldBe "orgA/repoA"
+
+    }
+
   }
 
   "GitHubAPIClient.getTeamsForOrganisation" should {
@@ -184,7 +207,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
 
       Mockito.when(mockRepositoryService.createRepository(same(organisation), any[Repository])).thenReturn(repository)
 
-      val createdUrl = githubApiClient.createRepo(organisation,repoName).futureValue
+      val createdUrl = githubApiClient.createRepo(organisation, repoName).futureValue
       createdUrl shouldBe cloneUrl
     }
   }
@@ -199,6 +222,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       var idProvider: IRepositoryIdProvider = null
 
       case class Arguments(teamId: Int, idProvider: IRepositoryIdProvider)
+
       val (future, answer) = buildAnswer2(Arguments.apply _)
 
       Mockito.when(mockTeamService.addRepository(any(), any())).thenAnswer(answer)
@@ -222,6 +246,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       githubApiClient.createHook(organisation, repoName, hookName, config)
 
       case class Arguments(idProvider: IRepositoryIdProvider, hook: RepositoryHook)
+
       val (future, answer) = buildAnswer2(Arguments.apply _)
 
       Mockito.when(mockRepositoryService.createHook(any(), any())).thenAnswer(answer)
@@ -245,8 +270,12 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       override def answer(invocationOnMock: InvocationOnMock): Unit = {
         val rawArgs = invocationOnMock.getArguments
 
-        val curried = convert(rawArgs) { function.curried }
-        val arguments = convert(rawArgs.tail) { curried }
+        val curried = convert(rawArgs) {
+          function.curried
+        }
+        val arguments = convert(rawArgs.tail) {
+          curried
+        }
 
         promise.success(arguments)
       }
