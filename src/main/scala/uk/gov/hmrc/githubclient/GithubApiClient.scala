@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.githubclient
 
+import com.google.common.io.BaseEncoding
 import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, RepositoryHook}
 import org.eclipse.egit.github.core.client.{GitHubClient, RequestException}
 import org.eclipse.egit.github.core.service._
@@ -29,7 +30,7 @@ trait GithubApiClient {
   val orgService: OrganizationService
   val teamService: ExtendedTeamService
   val repositoryService: RepositoryService
-  val contentsService: ContentsService
+  val contentsService: ExtendedContentsService
   val releaseService: ReleaseService
 
   def getOrganisations(implicit ec: ExecutionContext): Future[List[GhOrganisation]] = Future {
@@ -119,6 +120,18 @@ trait GithubApiClient {
       idProvider,
       new RepositoryHook().setName(hookName).setConfig(config).setActive(active))
   }
+
+  def createFile(orgName: String, repoName: String, pathAndFileName: String, contents: String, message: String)(implicit ec: ExecutionContext) : Future[Unit] =
+  {
+    if (message.isEmpty)
+      Future.failed(new RuntimeException("Commit message must be provided"))
+    else
+      Future {
+        val encodedContents = BaseEncoding.base64().encode(contents.getBytes)
+        contentsService.createFile(orgName, repoName, pathAndFileName, encodedContents, message)
+      }
+  }
+
 }
 
 object GithubApiClient {
@@ -132,7 +145,7 @@ object GithubApiClient {
       val orgService: OrganizationService = new OrganizationService(client)
       val teamService: ExtendedTeamService = new ExtendedTeamService(client)
       val repositoryService: RepositoryService = new RepositoryService(client)
-      val contentsService: ContentsService = new ContentsService(client)
+      val contentsService: ExtendedContentsService = new ExtendedContentsService(client)
       val releaseService: ReleaseService = new ReleaseService(client)
     }
   }

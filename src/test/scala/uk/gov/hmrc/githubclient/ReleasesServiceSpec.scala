@@ -24,7 +24,6 @@ import org.scalatest.{Matchers, WordSpec}
 
 class ReleasesServiceSpec extends WordSpec with Matchers with MockitoSugar {
 
-
   private val githubClient: GitHubClient = mock[GitHubClient]
 
   private val releasesService: ReleaseService = new ReleaseService(githubClient)

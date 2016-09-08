@@ -41,14 +41,14 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
     val mockOrgService: OrganizationService = mock[OrganizationService]
     val mockTeamService: ExtendedTeamService = mock[ExtendedTeamService]
     val mockRepositoryService: RepositoryService = mock[RepositoryService]
-    val mockContentsService: ContentsService = mock[ContentsService]
+    val mockContentsService: ExtendedContentsService = mock[ExtendedContentsService]
     val mockReleaseService: ReleaseService = mock[ReleaseService]
 
     def githubApiClient = new GithubApiClient {
       val orgService: OrganizationService = mockOrgService
       val teamService: ExtendedTeamService = mockTeamService
       val repositoryService: RepositoryService = mockRepositoryService
-      val contentsService: ContentsService = mockContentsService
+      val contentsService: ExtendedContentsService = mockContentsService
       val releaseService = mockReleaseService
     }
   }
@@ -260,6 +260,25 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       args.hook.getConfig()("jenkins_hook_url") shouldBe "url"
       args.hook.getName shouldBe "jenkins"
       args.hook.isActive shouldBe true
+    }
+  }
+
+  "GitHubAPIClient.createFile" should {
+    val organisation = "HMRC"
+    val repoName = "test-repo"
+    val filePath = "conf/app.config"
+    val contents = "some file contents"
+    val message = "created a file"
+
+    "commit the file to the repository, base 64 encoding the contents" in new Setup {
+      val result = githubApiClient.createFile(organisation, repoName, filePath, contents, message).futureValue
+      Mockito.verify(mockContentsService).createFile(organisation, repoName, filePath, "c29tZSBmaWxlIGNvbnRlbnRz", message)
+    }
+
+    "fail if commit message is empty" in new Setup {
+      a [RuntimeException] should be thrownBy {
+        githubApiClient.createFile(organisation, repoName, filePath, contents, "").futureValue
+      }
     }
   }
 
