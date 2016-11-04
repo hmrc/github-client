@@ -16,14 +16,13 @@
 
 package uk.gov.hmrc.githubclient
 
-import java.io.IOException
-import java.util
+import java.time.{LocalDateTime, ZoneId}
+import java.util.Date
 
 import org.eclipse.egit.github.core._
-import org.eclipse.egit.github.core.client.{GitHubRequest, GitHubResponse, RequestException}
-import org.eclipse.egit.github.core.service.{ContentsService, OrganizationService, RepositoryService, TeamService}
-import org.mockito.Matchers.{any, same}
-import org.mockito.Matchers.{eq => meq}
+import org.eclipse.egit.github.core.client.RequestException
+import org.eclipse.egit.github.core.service.{OrganizationService, RepositoryService}
+import org.mockito.Matchers.{any, same, eq => meq}
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
 import org.mockito.{ArgumentCaptor, Mockito}
@@ -31,7 +30,6 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{BeforeAndAfterEach, Matchers, OneInstancePerTest, WordSpec}
 
-import scala.collection.immutable.Stack
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
 
@@ -104,13 +102,24 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
   "GitHubAPIClient.getReposForTeam" should {
     "get all team for organization" in new Setup {
 
+      private val now = LocalDateTime.now()
+      private val fiveDaysAgo = now.minusDays(5)
+
+      def toDate(d:LocalDateTime) = Date.from(d.atZone(ZoneId.systemDefault()).toInstant())
+
       val repos: java.util.List[Repository] = List(
-        new Repository().setName("repoA").setId(1).setHtmlUrl("http://some/html/url").setFork(true)
+        new Repository()
+          .setName("repoA")
+          .setId(1)
+          .setHtmlUrl("http://some/html/url")
+          .setFork(true)
+          .setCreatedAt(toDate (fiveDaysAgo))
+          .setPushedAt(toDate(now))
       )
 
       Mockito.when(mockTeamService.getRepositories(1)).thenReturn(repos)
 
-      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", 1, "http://some/html/url", true))
+      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", 1, "http://some/html/url", true, fiveDaysAgo, now))
     }
   }
 

@@ -16,6 +16,9 @@
 
 package uk.gov.hmrc.githubclient
 
+import java.time.{LocalDateTime, ZoneId}
+import java.util.Date
+
 import com.google.common.io.BaseEncoding
 import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, RepositoryHook}
 import org.eclipse.egit.github.core.client.{GitHubClient, RequestException}
@@ -46,8 +49,11 @@ trait GithubApiClient {
   }
 
   def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] = Future {
+
+    implicit def toLocalDateTime(in: Date): LocalDateTime = LocalDateTime.ofInstant(in.toInstant(), ZoneId.systemDefault())
+
     teamService.getRepositories(teamId.toInt).toList.map { gr =>
-      GhRepository(gr.getName, gr.getId, gr.getHtmlUrl, gr.isFork)
+      GhRepository(gr.getName, gr.getId, gr.getHtmlUrl, gr.isFork, gr.getCreatedAt, gr.getPushedAt)
     }
   }
 
