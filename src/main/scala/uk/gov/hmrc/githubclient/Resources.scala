@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.githubclient
 
-import java.time.LocalDateTime
 import java.util.Date
 
 case class GhOrganisation(login: String, id: Int = 0)
@@ -28,8 +27,8 @@ case class GhRepository(name: String,
                         id: Long,
                         htmlUrl: String,
                         fork: Boolean = false,
-                        createdDate: LocalDateTime,
-                        lastActiveDate: LocalDateTime)
+                        createdDate: Long,
+                        lastActiveDate: Long)
 
 case class GhRepoRelease(id: Long, tagName: String, createdAt: Date)
 

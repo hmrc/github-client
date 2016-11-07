@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.githubclient
 
-import java.time.{LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.util.Date
 
 import org.eclipse.egit.github.core._
@@ -102,10 +102,11 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
   "GitHubAPIClient.getReposForTeam" should {
     "get all team for organization" in new Setup {
 
-      private val now = LocalDateTime.now()
-      private val fiveDaysAgo = now.minusDays(5)
+      private val nowDate = new Date()
+      private val now = nowDate.getTime
 
-      def toDate(d:LocalDateTime) = Date.from(d.atZone(ZoneId.systemDefault()).toInstant())
+      private val fiveDaysAgo = LocalDate.now().minusDays(5).toEpochDay
+      private val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
       val repos: java.util.List[Repository] = List(
         new Repository()
@@ -114,8 +115,8 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
           .setId(1)
           .setHtmlUrl("http://some/html/url")
           .setFork(true)
-          .setCreatedAt(toDate (fiveDaysAgo))
-          .setPushedAt(toDate(now))
+          .setCreatedAt(fiveDaysAgoDate)
+          .setPushedAt(nowDate)
       )
 
       Mockito.when(mockTeamService.getRepositories(1)).thenReturn(repos)
