@@ -110,6 +110,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       val repos: java.util.List[Repository] = List(
         new Repository()
           .setName("repoA")
+          .setDescription("some desc")
           .setId(1)
           .setHtmlUrl("http://some/html/url")
           .setFork(true)
@@ -119,7 +120,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
 
       Mockito.when(mockTeamService.getRepositories(1)).thenReturn(repos)
 
-      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", 1, "http://some/html/url", true, fiveDaysAgo, now))
+      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", "some desc",  1, "http://some/html/url", true, fiveDaysAgo, now))
     }
   }
 

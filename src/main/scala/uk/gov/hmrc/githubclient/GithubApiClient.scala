@@ -53,7 +53,7 @@ trait GithubApiClient {
     implicit def toLocalDateTime(in: Date): LocalDateTime = LocalDateTime.ofInstant(in.toInstant(), ZoneId.systemDefault())
 
     teamService.getRepositories(teamId.toInt).toList.map { gr =>
-      GhRepository(gr.getName, gr.getId, gr.getHtmlUrl, gr.isFork, gr.getCreatedAt, gr.getPushedAt)
+      GhRepository(gr.getName, gr.getDescription, gr.getId, gr.getHtmlUrl, gr.isFork, gr.getCreatedAt, gr.getPushedAt)
     }
   }
 
