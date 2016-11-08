@@ -123,6 +123,30 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
 
       githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", "some desc",  1, "http://some/html/url", true, fiveDaysAgo, now))
     }
+
+    "default description to empty string" in new Setup {
+
+      private val nowDate = new Date()
+      private val now = nowDate.getTime
+
+      private val fiveDaysAgo = LocalDate.now().minusDays(5).toEpochDay
+      private val fiveDaysAgoDate = new Date(fiveDaysAgo)
+
+      val repos: java.util.List[Repository] = List(
+        new Repository()
+          .setName("repoA")
+          .setDescription(null)
+          .setId(1)
+          .setHtmlUrl("http://some/html/url")
+          .setFork(true)
+          .setCreatedAt(fiveDaysAgoDate)
+          .setPushedAt(nowDate)
+      )
+
+      Mockito.when(mockTeamService.getRepositories(1)).thenReturn(repos)
+
+      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", "",  1, "http://some/html/url", true, fiveDaysAgo, now))
+    }
   }
 
   val captor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])

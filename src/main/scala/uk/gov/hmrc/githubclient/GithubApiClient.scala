@@ -51,7 +51,7 @@ trait GithubApiClient {
   def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] = Future {
 
     teamService.getRepositories(teamId.toInt).toList.map { gr =>
-      GhRepository(gr.getName, gr.getDescription, gr.getId, gr.getHtmlUrl, gr.isFork, gr.getCreatedAt.getTime, gr.getPushedAt.getTime)
+      GhRepository(gr.getName, Option(gr.getDescription).getOrElse(""), gr.getId, gr.getHtmlUrl, gr.isFork, gr.getCreatedAt.getTime, gr.getPushedAt.getTime)
     }
   }
 
