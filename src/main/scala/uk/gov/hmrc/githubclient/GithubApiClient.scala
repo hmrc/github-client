@@ -16,11 +16,12 @@
 
 package uk.gov.hmrc.githubclient
 
+import java.nio.charset.StandardCharsets
 import java.time.{LocalDateTime, ZoneId, ZoneOffset}
-import java.util.Date
+import java.util.{Base64, Date}
 
 import com.google.common.io.BaseEncoding
-import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, RepositoryHook}
+import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, RepositoryContents, RepositoryHook}
 import org.eclipse.egit.github.core.client.{GitHubClient, RequestException}
 import org.eclipse.egit.github.core.service._
 import play.Logger
@@ -49,7 +50,6 @@ trait GithubApiClient {
   }
 
   def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] = Future {
-
     teamService.getRepositories(teamId.toInt).toList.map { gr =>
       GhRepository(gr.getName, Option(gr.getDescription).getOrElse(""), gr.getId, gr.getHtmlUrl, gr.isFork, gr.getCreatedAt.getTime, gr.getPushedAt.getTime)
     }
@@ -60,11 +60,8 @@ trait GithubApiClient {
   }
 
   def getTags(org: String, repoName: String)(implicit ec: ExecutionContext): Future[List[String]] = Future {
-
     repositoryService.getTags(repositoryId(repoName, org)).map(_.getName).toList
-
   }
-
 
   def repoContainsContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = Future {
     try {
@@ -73,6 +70,20 @@ trait GithubApiClient {
       case e: Throwable =>
         Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${e.getMessage}")
         false
+    }
+  }
+
+  private def isDirectory(path: String, contents: Seq[RepositoryContents]) =
+    contents.head.getPath != path
+
+  def getFileContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = Future {
+    try {
+      val contents = contentsService.getContents(repositoryId(repoName, orgName), path)
+      if (contents.isEmpty || isDirectory(path, contents)) None else Some(new String(Base64.getMimeDecoder.decode(contents.head.getContent)))
+    } catch {
+      case e: Throwable =>
+        Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${e.getMessage}")
+        None
     }
   }
 
@@ -91,7 +102,6 @@ trait GithubApiClient {
       if (ex.getMessage.contains("404")) false
       else throw ex;
     }
-
   }
 
   def teamId(orgName: String, team: String)(implicit ec: ExecutionContext): Future[Option[Int]] = Future {
@@ -135,7 +145,6 @@ trait GithubApiClient {
         contentsService.createFile(orgName, repoName, pathAndFileName, encodedContents, message)
       }
   }
-
 }
 
 object GithubApiClient {
@@ -155,4 +164,3 @@ object GithubApiClient {
   }
 
 }
-

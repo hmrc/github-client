@@ -16,8 +16,9 @@
 
 package uk.gov.hmrc.githubclient
 
+import java.nio.charset.StandardCharsets
 import java.time.{LocalDate, LocalDateTime, ZoneId}
-import java.util.Date
+import java.util.{Base64, Date}
 
 import org.eclipse.egit.github.core._
 import org.eclipse.egit.github.core.client.RequestException
@@ -177,6 +178,52 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
 
       githubApiClient.repoContainsContent(path, "repoA", "OrgA").futureValue shouldBe false
     }
+  }
+
+  "GitHubAPIClient.getFileContent" should {
+
+    "return content decoded from base64 with line breaks if the file exists" in new Setup {
+      val path = s"folder/file.txt"
+      val content = "Some contents"
+
+      val contents: java.util.List[RepositoryContents] = List(
+        new RepositoryContents().setPath(path).setName("file.txt").setContent(Base64.getEncoder.encodeToString(content.getBytes(StandardCharsets.UTF_8)) + "\n")
+      )
+
+      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider], same(path))).thenReturn(contents)
+
+      githubApiClient.getFileContent(path, "repoA", "OrgA").futureValue shouldBe Some(content)
+
+      Mockito.verify(mockContentsService).getContents(captor.capture(), same(path))
+      captor.getValue.generateId() shouldBe "OrgA/repoA"
+    }
+
+    "return None if the file does not exist" in new Setup {
+      val path = s"folder/file.txt"
+      val contents: java.util.List[RepositoryContents] = List()
+
+      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider], same(path))).thenReturn(contents)
+
+      githubApiClient.getFileContent(path, "repoA", "OrgA").futureValue shouldBe None
+
+      Mockito.verify(mockContentsService).getContents(captor.capture(), same(path))
+      captor.getValue.generateId() shouldBe "OrgA/repoA"
+    }
+
+    "return None if the path provided points to a directory" in new Setup {
+      val path = s"folder/subfolder"
+      val contents: java.util.List[RepositoryContents] = List(
+        new RepositoryContents().setPath("folder/subfolder/file1.txt")
+      )
+
+      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider], same(path))).thenReturn(contents)
+
+      githubApiClient.getFileContent(path, "repoA", "OrgA").futureValue shouldBe None
+
+      Mockito.verify(mockContentsService).getContents(captor.capture(), same(path))
+      captor.getValue.generateId() shouldBe "OrgA/repoA"
+    }
+
   }
 
   "GitHubAPIClient.containsRepo" should {
