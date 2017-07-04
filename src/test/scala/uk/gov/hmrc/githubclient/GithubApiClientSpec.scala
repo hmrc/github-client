@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 HM Revenue & Customs
+ * Copyright 2017 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -118,11 +118,12 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
           .setFork(true)
           .setCreatedAt(fiveDaysAgoDate)
           .setPushedAt(nowDate)
+          .setPrivate(true)
       )
 
       Mockito.when(mockTeamService.getRepositories(1)).thenReturn(repos)
 
-      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", "some desc",  1, "http://some/html/url", true, fiveDaysAgo, now))
+      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", "some desc",  1, "http://some/html/url", true, fiveDaysAgo, now, true))
     }
 
     "default description to empty string" in new Setup {
@@ -142,11 +143,12 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
           .setFork(true)
           .setCreatedAt(fiveDaysAgoDate)
           .setPushedAt(nowDate)
+          .setPrivate(false)
       )
 
       Mockito.when(mockTeamService.getRepositories(1)).thenReturn(repos)
 
-      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", "",  1, "http://some/html/url", true, fiveDaysAgo, now))
+      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", "",  1, "http://some/html/url", true, fiveDaysAgo, now, false))
     }
   }
 

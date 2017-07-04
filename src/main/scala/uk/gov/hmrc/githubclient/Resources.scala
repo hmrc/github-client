@@ -28,6 +28,7 @@ case class GhRepository(name: String,
                         htmlUrl: String,
                         fork: Boolean = false,
                         createdDate: Long,
-                        lastActiveDate: Long)
+                        lastActiveDate: Long,
+                        isPrivate: Boolean)
 
 case class GhRepoRelease(id: Long, tagName: String, createdAt: Date)

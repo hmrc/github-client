@@ -16,15 +16,12 @@
 
 package uk.gov.hmrc.githubclient
 
-import java.nio.charset.StandardCharsets
-import java.time.{LocalDateTime, ZoneId, ZoneOffset}
-import java.util.{Base64, Date}
+import java.util.Base64
 
 import com.google.common.io.BaseEncoding
-import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, RepositoryContents, RepositoryHook}
-import org.eclipse.egit.github.core.client.{GitHubClient, RequestException}
+import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service._
-import play.Logger
+import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, RepositoryContents, RepositoryHook}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -51,7 +48,7 @@ trait GithubApiClient {
 
   def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] = Future {
     teamService.getRepositories(teamId.toInt).toList.map { gr =>
-      GhRepository(gr.getName, Option(gr.getDescription).getOrElse(""), gr.getId, gr.getHtmlUrl, gr.isFork, gr.getCreatedAt.getTime, gr.getPushedAt.getTime)
+      GhRepository(gr.getName, Option(gr.getDescription).getOrElse(""), gr.getId, gr.getHtmlUrl, gr.isFork, gr.getCreatedAt.getTime, gr.getPushedAt.getTime, gr.isPrivate)
     }
   }
 
