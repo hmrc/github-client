@@ -11,15 +11,7 @@ object HmrcBuild extends Build {
 
   lazy val library = Project(appName, file("."))
     .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning)
-    .settings(
-      scalaVersion := "2.11.6",
-      scalacOptions ++= Seq(
-        "-Xlint",
-        "-target:jvm-1.8",
-        "-Xmax-classfile-name", "100",
-        "-encoding", "UTF-8"
-      )
-    )
+    .settings(scalaVersion := "2.11.6")
     .settings(
       parallelExecution in Test := false,
       fork in Test := false,
