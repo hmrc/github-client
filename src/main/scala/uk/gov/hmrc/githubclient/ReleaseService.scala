@@ -35,4 +35,14 @@ class ReleaseService(client: GitHubClient) extends GitHubService(client) {
     getAll(request).toList
   }
 
+  def getTags(org: String, repoName: String): List[GhRepoTag] = {
+    import scala.collection.JavaConversions._
+
+    val request: PagedRequest[GhRepoTag] = createPagedRequest()
+    request.setUri(s"$SEGMENT_REPOS/$org/$repoName/tags")
+    request.setType(new TypeToken[java.util.List[GhRepoTag]]() {
+    }.getType)
+    getAll(request).toList
+  }
+
 }

@@ -32,3 +32,5 @@ case class GhRepository(name: String,
                         isPrivate: Boolean)
 
 case class GhRepoRelease(id: Long, tagName: String, createdAt: Date)
+
+case class GhRepoTag(name: String)

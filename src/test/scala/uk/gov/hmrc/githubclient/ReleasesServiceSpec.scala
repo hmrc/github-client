@@ -48,5 +48,26 @@ class ReleasesServiceSpec extends WordSpec with Matchers with MockitoSugar {
     }
 
   }
+  
+  "ReleasesService.getTags" should {
+
+    "return true if it contains content at the given path" in {
+
+      val response: GitHubResponse = mock[GitHubResponse]
+
+      Mockito.when(githubClient.get(any[GitHubRequest])).thenReturn(response)
+
+      releasesService.getTags("orgA", "repoA")
+
+
+      val captor = ArgumentCaptor.forClass(classOf[GitHubRequest])
+
+      Mockito.verify(githubClient).get(captor.capture())
+
+      captor.getValue.getUri shouldBe "/repos/orgA/repoA/tags"
+
+    }
+
+  }
 
 }
