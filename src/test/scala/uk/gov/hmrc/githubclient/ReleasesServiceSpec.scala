@@ -24,11 +24,11 @@ import org.scalatest.{Matchers, WordSpec}
 
 class ReleasesServiceSpec extends WordSpec with Matchers with MockitoSugar {
 
-  private val githubClient: GitHubClient = mock[GitHubClient]
-
-  private val releasesService: ReleaseService = new ReleaseService(githubClient)
 
   "ReleasesService.getReleases" should {
+    val githubClient: GitHubClient = mock[GitHubClient]
+
+    val releasesService: ReleaseService = new ReleaseService(githubClient)
 
     "return true if it contains content at the given path" in {
 
@@ -48,8 +48,12 @@ class ReleasesServiceSpec extends WordSpec with Matchers with MockitoSugar {
     }
 
   }
-  
+    
   "ReleasesService.getTags" should {
+
+    val githubClient: GitHubClient = mock[GitHubClient]
+
+    val releasesService: ReleaseService = new ReleaseService(githubClient)
 
     "return true if it contains content at the given path" in {
 
