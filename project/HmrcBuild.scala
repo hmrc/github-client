@@ -6,7 +6,6 @@ import uk.gov.hmrc.versioning.SbtGitVersioning
 
 object HmrcBuild extends Build {
 
-
   val appName = "github-client"
 
   lazy val library = Project(appName, file("."))

@@ -38,6 +38,8 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
 
   val rateLimitException = new RuntimeException("API rate limit exceeded for mr-robot")
 
+  val apiRateLimitExceeded = APIRateLimitExceededException(rateLimitException)
+
   trait Setup {
     val mockOrgService: OrganizationService = mock[OrganizationService]
     val mockTeamService: ExtendedTeamService = mock[ExtendedTeamService]
@@ -67,6 +69,13 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       githubApiClient.getOrganisations.futureValue shouldBe List(GhOrganisation("ORG1", 1), GhOrganisation("ORG2", 2))
 
     }
+
+    "handle API rate limit error" in new Setup {
+
+      Mockito.when(mockOrgService.getOrganizations).thenThrow(rateLimitException)
+
+      whenReady(githubApiClient.getOrganisations.failed){e => e shouldBe apiRateLimitExceeded}
+    }
   }
 
   "GitHubAPIClient.getTags" should {
@@ -89,6 +98,13 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
 
     }
 
+    "handle API rate limit error" in new Setup {
+
+      Mockito.when(mockRepositoryService.getTags(any[IRepositoryIdProvider])).thenThrow(rateLimitException)
+
+      whenReady(githubApiClient.getTags("orgA", "repoA").failed){e => e shouldBe apiRateLimitExceeded}
+    }
+
   }
 
   "GitHubAPIClient.getTeamsForOrganisation" should {
@@ -99,6 +115,13 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       Mockito.when(mockTeamService.getTeams("ORG1")).thenReturn(teams)
 
       githubApiClient.getTeamsForOrganisation("ORG1").futureValue shouldBe List(GhTeam("Ateam", 1))
+    }
+
+    "handle API rate limit error" in new Setup {
+
+      Mockito.when(mockTeamService.getTeams(any[String])).thenThrow(rateLimitException)
+
+      whenReady(githubApiClient.getTeamsForOrganisation("some-team").failed){e => e shouldBe apiRateLimitExceeded}
     }
   }
 
@@ -152,6 +175,13 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
 
       githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", "",  1, "http://some/html/url", true, fiveDaysAgo, now, false))
     }
+
+    "handle API rate limit error" in new Setup {
+
+      Mockito.when(mockTeamService.getRepositories(1)).thenThrow(rateLimitException)
+
+      whenReady(githubApiClient.getReposForTeam(1).failed){e => e shouldBe apiRateLimitExceeded}
+    }
   }
 
   val captor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
@@ -187,7 +217,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
 
       Mockito.when(mockContentsService.getContents(any(), any())).thenThrow(rateLimitException)
 
-      whenReady(githubApiClient.repoContainsContent("some-path", "repoA", "OrgA").failed) {e => e shouldBe rateLimitException}
+      whenReady(githubApiClient.repoContainsContent("some-path", "repoA", "OrgA").failed) {e => e shouldBe APIRateLimitExceededException(rateLimitException)}
 
     }
   }
@@ -240,7 +270,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
 
       Mockito.when(mockContentsService.getContents(any(), any())).thenThrow(rateLimitException)
 
-      whenReady(githubApiClient.getFileContent("some-path", "repoA", "OrgA").failed) {e => e shouldBe rateLimitException}
+      whenReady(githubApiClient.getFileContent("some-path", "repoA", "OrgA").failed) {e => e shouldBe APIRateLimitExceededException(rateLimitException)}
 
     }
 
@@ -280,7 +310,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
 
       Mockito.when(mockRepositoryService.getRepository(any(), any())).thenThrow(rateLimitException)
 
-      whenReady(githubApiClient.containsRepo("repoA", "OrgA").failed) {e => e shouldBe rateLimitException}
+      whenReady(githubApiClient.containsRepo("repoA", "OrgA").failed) {e => e shouldBe APIRateLimitExceededException(rateLimitException)}
 
     }
 
@@ -306,6 +336,13 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
 
       githubApiClient.teamId(organisation, teamName).futureValue shouldBe None
     }
+
+    "handle API rate limit error" in new Setup {
+
+      Mockito.when(mockTeamService.getTeams(organisation)).thenThrow(rateLimitException)
+
+      whenReady(githubApiClient.teamId(organisation, teamName).failed){e => e shouldBe apiRateLimitExceeded}
+    }
   }
 
   "GitHubAPIClient.createRepo" should {
@@ -321,13 +358,20 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       val createdUrl = githubApiClient.createRepo(organisation, repoName).futureValue
       createdUrl shouldBe cloneUrl
     }
+
+    "handle API rate limit error" in new Setup {
+
+      Mockito.when(mockRepositoryService.createRepository(same(organisation), any[Repository])).thenThrow(rateLimitException)
+
+      whenReady(githubApiClient.createRepo(organisation, repoName).failed){e => e shouldBe apiRateLimitExceeded}
+    }
   }
 
   "GitHubAPIClient.addRepoToTeam" should {
+    val organisation = "HMRC"
+    val repoName = "test-repo"
     "add a repository to a team in" in new Setup {
 
-      val organisation = "HMRC"
-      val repoName = "test-repo"
 
       var teamId: Int = 0
       var idProvider: IRepositoryIdProvider = null
@@ -344,6 +388,14 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       args.teamId shouldBe 99
       args.idProvider.generateId() shouldBe "HMRC/test-repo"
     }
+
+    "handle API rate limit error" in new Setup {
+
+      Mockito.when(mockTeamService.addRepository(any(), any())).thenThrow(rateLimitException)
+
+      whenReady(githubApiClient.addRepoToTeam(organisation, repoName, 99).failed){e => e shouldBe apiRateLimitExceeded}
+    }
+
   }
 
 
@@ -372,6 +424,14 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       args.hook.getName shouldBe "jenkins"
       args.hook.isActive shouldBe true
     }
+
+    "handle API rate limit error" in new Setup {
+
+      Mockito.when(mockRepositoryService.createHook(any(), any())).thenThrow(rateLimitException)
+
+      whenReady(githubApiClient.createHook(organisation, repoName, hookName, Map(), true).failed){e => e shouldBe apiRateLimitExceeded}
+    }
+
   }
 
   "GitHubAPIClient.createFile" should {
@@ -390,6 +450,13 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       a [RuntimeException] should be thrownBy {
         githubApiClient.createFile(organisation, repoName, filePath, contents, "").futureValue
       }
+    }
+
+    "handle API rate limit error" in new Setup {
+
+      Mockito.when(mockContentsService.createFile(organisation, repoName, filePath, "c29tZSBmaWxlIGNvbnRlbnRz", message)).thenThrow(rateLimitException)
+
+      whenReady(githubApiClient.createFile(organisation, repoName, filePath, contents, message).failed){e => e shouldBe apiRateLimitExceeded}
     }
   }
 
