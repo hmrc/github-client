@@ -26,6 +26,7 @@ import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, Reposito
 import scala.concurrent.{ExecutionContext, Future}
 
 trait GithubApiClient {
+
   import scala.collection.JavaConversions._
 
   val orgService: OrganizationService
@@ -60,10 +61,13 @@ trait GithubApiClient {
     repositoryService.getTags(repositoryId(repoName, org)).map(_.getName).toList
   }
 
-  def repoContainsContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = Future {
+  def repoContainsContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext): Future[Boolean] = Future {
     try {
       contentsService.getContents(repositoryId(repoName, orgName), path).nonEmpty
     } catch {
+      case e if e.getMessage.toLowerCase.contains("API rate limit exceeded for".toLowerCase) =>
+        Log.error("=== API rate limit has been reached ===", e)
+        throw e
       case e: Throwable =>
         Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${e.getMessage}")
         false
@@ -73,18 +77,21 @@ trait GithubApiClient {
   private def isDirectory(path: String, contents: Seq[RepositoryContents]) =
     contents.head.getPath != path
 
-  def getFileContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext) = Future {
+  def getFileContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext): Future[Option[String]] = Future {
     try {
       val contents = contentsService.getContents(repositoryId(repoName, orgName), path)
       if (contents.isEmpty || isDirectory(path, contents)) None else Some(new String(Base64.getMimeDecoder.decode(contents.head.getContent)))
     } catch {
+      case e if e.getMessage.toLowerCase.contains("API rate limit exceeded for".toLowerCase) =>
+        Log.error("=== API rate limit has been reached ===", e)
+        throw e
       case e: Throwable =>
         Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${e.getMessage}")
         None
     }
   }
 
-  def repositoryId(repoName: String, orgName: String): IRepositoryIdProvider= {
+  def repositoryId(repoName: String, orgName: String): IRepositoryIdProvider = {
     new IRepositoryIdProvider {
       val generateId: String = orgName + "/" + repoName
     }
@@ -94,10 +101,14 @@ trait GithubApiClient {
     try {
       repositoryService.getRepository(orgName, repoName) != null
     }
-    catch { case ex: RequestException =>
-      Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${ex.getMessage}")
-      if (ex.getMessage.contains("404")) false
-      else throw ex;
+    catch {
+      case e if e.getMessage.toLowerCase.contains("API rate limit exceeded for".toLowerCase) =>
+        Log.error("=== API rate limit has been reached ===", e)
+        throw e
+      case ex: RequestException =>
+        Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${ex.getMessage}")
+        if (ex.getMessage.contains("404")) false
+        else throw ex;
     }
   }
 
@@ -113,7 +124,7 @@ trait GithubApiClient {
     newRepo.getCloneUrl
   }
 
-  def addRepoToTeam(orgName: String, repoName: String, teamId: Int)(implicit ec: ExecutionContext) : Future[Unit] = Future {
+  def addRepoToTeam(orgName: String, repoName: String, teamId: Int)(implicit ec: ExecutionContext): Future[Unit] = Future {
     teamService.addRepository(teamId, repositoryId(repoName, orgName))
   }
 
@@ -121,7 +132,7 @@ trait GithubApiClient {
                  repoName: String,
                  hookName: String,
                  config: Map[String, String],
-                 active: Boolean = true)(implicit ec: ExecutionContext) : Future[Unit] = Future {
+                 active: Boolean = true)(implicit ec: ExecutionContext): Future[Unit] = Future {
 
     val idProvider = new IRepositoryIdProvider {
       val generateId: String = orgName + "/" + repoName
@@ -132,8 +143,7 @@ trait GithubApiClient {
       new RepositoryHook().setName(hookName).setConfig(config).setActive(active))
   }
 
-  def createFile(orgName: String, repoName: String, pathAndFileName: String, contents: String, message: String)(implicit ec: ExecutionContext) : Future[Unit] =
-  {
+  def createFile(orgName: String, repoName: String, pathAndFileName: String, contents: String, message: String)(implicit ec: ExecutionContext): Future[Unit] = {
     if (message.isEmpty)
       Future.failed(new RuntimeException("Commit message must be provided"))
     else
