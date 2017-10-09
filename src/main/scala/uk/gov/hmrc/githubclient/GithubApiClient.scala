@@ -25,7 +25,12 @@ import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, Reposito
 
 import scala.concurrent.{ExecutionContext, Future}
 
+case class APIRateLimitExceededException(exception: Throwable) extends RuntimeException(exception)
+
+
 trait GithubApiClient {
+
+  import GithubApiClient._
 
   import scala.collection.JavaConversions._
 
@@ -39,35 +44,35 @@ trait GithubApiClient {
     orgService.getOrganizations.toList.map { go =>
       GhOrganisation(go.getLogin, go.getId)
     }
-  }
+  }.checkForApiRateLimitError
+
 
   def getTeamsForOrganisation(org: String)(implicit ec: ExecutionContext): Future[List[GhTeam]] = Future {
     teamService.getTeams(org).toList.map { gt =>
       GhTeam(gt.getName, gt.getId)
     }
-  }
+  }.checkForApiRateLimitError
 
   def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] = Future {
     teamService.getRepositories(teamId.toInt).toList.map { gr =>
       GhRepository(gr.getName, Option(gr.getDescription).getOrElse(""), gr.getId, gr.getHtmlUrl, gr.isFork, gr.getCreatedAt.getTime, gr.getPushedAt.getTime, gr.isPrivate)
     }
-  }
+  }.checkForApiRateLimitError
 
   def getReleases(org: String, repoName: String)(implicit ec: ExecutionContext): Future[List[GhRepoRelease]] = Future {
     releaseService.getReleases(org, repoName)
-  }
+  }.checkForApiRateLimitError
 
   def getTags(org: String, repoName: String)(implicit ec: ExecutionContext): Future[List[String]] = Future {
     repositoryService.getTags(repositoryId(repoName, org)).map(_.getName).toList
-  }
+  }.checkForApiRateLimitError
 
   def repoContainsContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext): Future[Boolean] = Future {
     try {
       contentsService.getContents(repositoryId(repoName, orgName), path).nonEmpty
     } catch {
-      case e if e.getMessage.toLowerCase.contains("API rate limit exceeded for".toLowerCase) =>
-        Log.error("=== API rate limit has been reached ===", e)
-        throw e
+      case e if isRateLimit(e) =>
+        rateLimitError(e)
       case e: Throwable =>
         Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${e.getMessage}")
         false
@@ -82,9 +87,8 @@ trait GithubApiClient {
       val contents = contentsService.getContents(repositoryId(repoName, orgName), path)
       if (contents.isEmpty || isDirectory(path, contents)) None else Some(new String(Base64.getMimeDecoder.decode(contents.head.getContent)))
     } catch {
-      case e if e.getMessage.toLowerCase.contains("API rate limit exceeded for".toLowerCase) =>
-        Log.error("=== API rate limit has been reached ===", e)
-        throw e
+      case e if isRateLimit(e) =>
+        rateLimitError(e)
       case e: Throwable =>
         Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${e.getMessage}")
         None
@@ -102,9 +106,8 @@ trait GithubApiClient {
       repositoryService.getRepository(orgName, repoName) != null
     }
     catch {
-      case e if e.getMessage.toLowerCase.contains("API rate limit exceeded for".toLowerCase) =>
-        Log.error("=== API rate limit has been reached ===", e)
-        throw e
+      case e if isRateLimit(e) =>
+        rateLimitError(e)
       case ex: RequestException =>
         Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${ex.getMessage}")
         if (ex.getMessage.contains("404")) false
@@ -114,7 +117,7 @@ trait GithubApiClient {
 
   def teamId(orgName: String, team: String)(implicit ec: ExecutionContext): Future[Option[Int]] = Future {
     teamService.getTeams(orgName).toList.find(t => t.getName == team).map(_.getId)
-  }
+  }.checkForApiRateLimitError
 
   def createRepo(orgName: String, repoName: String)(implicit ec: ExecutionContext) = Future {
     val newRepo = repositoryService.createRepository(
@@ -122,17 +125,17 @@ trait GithubApiClient {
       new Repository().setName(repoName).setPrivate(false).setHasIssues(true).setHasWiki(true).setHasDownloads(true))
 
     newRepo.getCloneUrl
-  }
+  }.checkForApiRateLimitError
 
   def addRepoToTeam(orgName: String, repoName: String, teamId: Int)(implicit ec: ExecutionContext): Future[Unit] = Future {
     teamService.addRepository(teamId, repositoryId(repoName, orgName))
-  }
+  }.checkForApiRateLimitError
 
   def createHook(orgName: String,
                  repoName: String,
                  hookName: String,
                  config: Map[String, String],
-                 active: Boolean = true)(implicit ec: ExecutionContext): Future[Unit] = Future {
+                 active: Boolean = true)(implicit ec: ExecutionContext): Future[RepositoryHook] = Future {
 
     val idProvider = new IRepositoryIdProvider {
       val generateId: String = orgName + "/" + repoName
@@ -141,7 +144,7 @@ trait GithubApiClient {
     repositoryService.createHook(
       idProvider,
       new RepositoryHook().setName(hookName).setConfig(config).setActive(active))
-  }
+  }.checkForApiRateLimitError
 
   def createFile(orgName: String, repoName: String, pathAndFileName: String, contents: String, message: String)(implicit ec: ExecutionContext): Future[Unit] = {
     if (message.isEmpty)
@@ -150,8 +153,10 @@ trait GithubApiClient {
       Future {
         val encodedContents = BaseEncoding.base64().encode(contents.getBytes)
         contentsService.createFile(orgName, repoName, pathAndFileName, encodedContents, message)
-      }
+      }.checkForApiRateLimitError
   }
+
+
 }
 
 object GithubApiClient {
@@ -169,5 +174,17 @@ object GithubApiClient {
       val releaseService: ReleaseService = new ReleaseService(client)
     }
   }
+
+  private def isRateLimit(e: Throwable): Boolean = e.getMessage.toLowerCase.contains("api rate limit exceeded")
+
+  implicit class RateLimit[T](theFuture: Future[T]) {
+    def checkForApiRateLimitError(implicit executionContext: ExecutionContext): Future[T] = theFuture.recoverWith { case e if isRateLimit(e) => rateLimitError(e) }
+  }
+
+  private def rateLimitError(e: Throwable) = {
+    Log.error("=== API rate limit has been reached ===", e)
+    throw APIRateLimitExceededException(e)
+  }
+
 
 }
