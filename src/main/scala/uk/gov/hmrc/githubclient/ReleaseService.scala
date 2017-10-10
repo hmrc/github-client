@@ -17,10 +17,11 @@
 package uk.gov.hmrc.githubclient
 
 import com.google.gson.reflect.TypeToken
-import org.eclipse.egit.github.core.{Repository, RepositoryId}
-import org.eclipse.egit.github.core.client.{GitHubClient, PagedRequest}
-import org.eclipse.egit.github.core.service.{GitHubService, RepositoryService}
 import org.eclipse.egit.github.core.client.IGitHubConstants.SEGMENT_REPOS
+import org.eclipse.egit.github.core.client.{GitHubClient, PagedRequest, RequestException}
+import org.eclipse.egit.github.core.service.GitHubService
+
+import scala.util.{Failure, Success, Try}
 
 
 class ReleaseService(client: GitHubClient) extends GitHubService(client) {
@@ -32,7 +33,11 @@ class ReleaseService(client: GitHubClient) extends GitHubService(client) {
     request.setUri(s"$SEGMENT_REPOS/$org/$repoName/releases")
     request.setType(new TypeToken[java.util.List[GhRepoRelease]]() {
     }.getType)
-    getAll(request).toList
+    Try(getAll(request).toList) match {
+      case Success(l) => l
+      case Failure(_: RequestException) => Nil
+      case Failure(e) => throw e
+    }
   }
 
   def getTags(org: String, repoName: String): List[GhRepoTag] = {
@@ -42,7 +47,11 @@ class ReleaseService(client: GitHubClient) extends GitHubService(client) {
     request.setUri(s"$SEGMENT_REPOS/$org/$repoName/tags")
     request.setType(new TypeToken[java.util.List[GhRepoTag]]() {
     }.getType)
-    getAll(request).toList
+    Try(getAll(request).toList) match {
+      case Success(l) => l
+      case Failure(_: RequestException) => Nil
+      case Failure(e) => throw e
+    }
   }
 
 }
