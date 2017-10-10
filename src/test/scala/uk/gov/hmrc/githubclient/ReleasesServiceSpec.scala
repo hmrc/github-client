@@ -16,7 +16,8 @@
 
 package uk.gov.hmrc.githubclient
 
-import org.eclipse.egit.github.core.client.{GitHubClient, GitHubRequest, GitHubResponse}
+import org.eclipse.egit.github.core.RequestError
+import org.eclipse.egit.github.core.client.{GitHubClient, GitHubRequest, GitHubResponse, RequestException}
 import org.mockito.Matchers._
 import org.mockito.{ArgumentCaptor, Mockito}
 import org.scalatest.mock.MockitoSugar
@@ -27,24 +28,26 @@ class ReleasesServiceSpec extends WordSpec with Matchers with MockitoSugar {
 
   "ReleasesService.getReleases" should {
     val githubClient: GitHubClient = mock[GitHubClient]
-
     val releasesService: ReleaseService = new ReleaseService(githubClient)
 
     "return true if it contains content at the given path" in {
-
       val response: GitHubResponse = mock[GitHubResponse]
-
       Mockito.when(githubClient.get(any[GitHubRequest])).thenReturn(response)
 
       releasesService.getReleases("orgA", "repoA")
 
-
       val captor = ArgumentCaptor.forClass(classOf[GitHubRequest])
-
       Mockito.verify(githubClient).get(captor.capture())
 
       captor.getValue.getUri shouldBe "/repos/orgA/repoA/releases"
 
+    }
+
+    "return empty sequence if releases cannot find a release for this service" in {
+      val exception = new RequestException(new RequestError(), 404)
+      Mockito.when(githubClient.get(any[GitHubRequest])).thenThrow(exception)
+
+      releasesService.getReleases("orgA", "repoA") shouldBe Nil
     }
 
   }
@@ -52,24 +55,26 @@ class ReleasesServiceSpec extends WordSpec with Matchers with MockitoSugar {
   "ReleasesService.getTags" should {
 
     val githubClient: GitHubClient = mock[GitHubClient]
-
     val releasesService: ReleaseService = new ReleaseService(githubClient)
 
     "return true if it contains content at the given path" in {
-
       val response: GitHubResponse = mock[GitHubResponse]
-
       Mockito.when(githubClient.get(any[GitHubRequest])).thenReturn(response)
 
       releasesService.getTags("orgA", "repoA")
 
-
       val captor = ArgumentCaptor.forClass(classOf[GitHubRequest])
-
       Mockito.verify(githubClient).get(captor.capture())
 
       captor.getValue.getUri shouldBe "/repos/orgA/repoA/tags"
+    }
 
+
+    "return empty sequence if releases cannot find a tag for this service" in {
+      val exception = new RequestException(new RequestError(), 404)
+      Mockito.when(githubClient.get(any[GitHubRequest])).thenThrow(exception)
+
+      releasesService.getTags("orgA", "repoA") shouldBe Nil
     }
 
   }
