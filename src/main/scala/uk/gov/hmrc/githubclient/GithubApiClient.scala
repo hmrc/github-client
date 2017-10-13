@@ -46,7 +46,6 @@ trait GithubApiClient {
     }
   }.checkForApiRateLimitError
 
-
   def getTeamsForOrganisation(org: String)(implicit ec: ExecutionContext): Future[List[GhTeam]] = Future {
     teamService.getTeams(org).toList.map { gt =>
       GhTeam(gt.getName, gt.getId)
@@ -55,7 +54,7 @@ trait GithubApiClient {
 
   def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] = Future {
     teamService.getRepositories(teamId.toInt).toList.map { gr =>
-      GhRepository(gr.getName, Option(gr.getDescription).getOrElse(""), gr.getId, gr.getHtmlUrl, gr.isFork, gr.getCreatedAt.getTime, gr.getPushedAt.getTime, gr.isPrivate)
+      GhRepository(gr.getName, Option(gr.getDescription).getOrElse(""), gr.getId, gr.getHtmlUrl, gr.isFork, gr.getCreatedAt.getTime, gr.getPushedAt.getTime, gr.isPrivate, Option(gr.getLanguage).getOrElse(""))
     }
   }.checkForApiRateLimitError
 

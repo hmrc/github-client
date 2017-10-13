@@ -144,14 +144,15 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
           .setCreatedAt(fiveDaysAgoDate)
           .setPushedAt(nowDate)
           .setPrivate(true)
+          .setLanguage("Scala")
       )
 
       Mockito.when(mockTeamService.getRepositories(1)).thenReturn(repos)
 
-      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", "some desc",  1, "http://some/html/url", true, fiveDaysAgo, now, true))
+      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", "some desc",  1, "http://some/html/url", true, fiveDaysAgo, now, true, "Scala"))
     }
 
-    "default description to empty string" in new Setup {
+    "default description and language to empty string" in new Setup {
 
       private val nowDate = new Date()
       private val now = nowDate.getTime
@@ -169,11 +170,12 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
           .setCreatedAt(fiveDaysAgoDate)
           .setPushedAt(nowDate)
           .setPrivate(false)
+          .setLanguage(null)
       )
 
       Mockito.when(mockTeamService.getRepositories(1)).thenReturn(repos)
 
-      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", "",  1, "http://some/html/url", true, fiveDaysAgo, now, false))
+      githubApiClient.getReposForTeam(1).futureValue shouldBe List(GhRepository("repoA", "",  1, "http://some/html/url", true, fiveDaysAgo, now, false, ""))
     }
 
     "handle API rate limit error" in new Setup {
