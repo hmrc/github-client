@@ -73,7 +73,7 @@ trait GithubApiClient {
       case e if isRateLimit(e) =>
         rateLimitError(e)
       case e: Throwable =>
-        Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${e.getMessage}")
+        Log.warn(s"repoContainsContent: error getting contents for path:($path) :$repoName :$orgName errMessage : ${e.getMessage}")
         false
     }
   }
@@ -89,7 +89,7 @@ trait GithubApiClient {
       case e if isRateLimit(e) =>
         rateLimitError(e)
       case e: Throwable =>
-        Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${e.getMessage}")
+        Log.warn(s"getFileContent: error getting file content for path: $path :$repoName :$orgName errMessage : ${e.getMessage}")
         None
     }
   }
@@ -108,7 +108,7 @@ trait GithubApiClient {
       case e if isRateLimit(e) =>
         rateLimitError(e)
       case ex: RequestException =>
-        Log.warn(s"error getting content for :$repoName :$orgName errMessage : ${ex.getMessage}")
+        Log.warn(s"containsRepo: error getting repo for :$repoName :$orgName errMessage : ${ex.getMessage}")
         if (ex.getMessage.contains("404")) false
         else throw ex;
     }
