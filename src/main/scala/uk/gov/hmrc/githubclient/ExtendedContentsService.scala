@@ -19,8 +19,7 @@ package uk.gov.hmrc.githubclient
 import java.util
 
 import org.eclipse.egit.github.core.client.GitHubClient
-import org.eclipse.egit.github.core.service.{ContentsService, TeamService}
-import org.eclipse.egit.github.core.{IRepositoryIdProvider, Team}
+import org.eclipse.egit.github.core.service.ContentsService
 
 class ExtendedContentsService(client: GitHubClient) extends ContentsService(client) {
 

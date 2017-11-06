@@ -16,30 +16,30 @@
 
 package uk.gov.hmrc.githubclient
 
-import java.io.IOException
+import java.io.{IOException, InputStream}
 import java.lang.reflect.Type
 import java.net.{HttpURLConnection, URL}
 import java.util
 
-import org.eclipse.egit.github.core.client.GitHubClient
+import org.eclipse.egit.github.core.client.{GitHubClient, GitHubRequest, GitHubResponse}
 
 object ExtendedGitHubClient
 {
-  def apply(url: String): ExtendedGitHubClient = {
+  def apply(url: String, metrics: GithubClientMetrics): ExtendedGitHubClient = {
     try {
       var e = new URL(url).getHost
       if("github.com".equals(e) || "gist.github.com".equals(e)) {
         e = "api.github.com"
       }
 
-      new ExtendedGitHubClient(e)
+      new ExtendedGitHubClient(e, metrics)
     } catch { case ex: IOException =>
       throw new IllegalArgumentException(ex)
     }
   }
 }
 
-class ExtendedGitHubClient(hostName: String) extends GitHubClient(hostName) {
+class ExtendedGitHubClient(hostName: String, metrics: GithubClientMetrics) extends GitHubClient(hostName) {
   private def sendJson[V](request: HttpURLConnection, params: util.HashMap[String, String], typeOf: Type) : Option[V] = {
     this.sendParams(request, params)
     val code = request.getResponseCode
@@ -65,4 +65,15 @@ class ExtendedGitHubClient(hostName: String) extends GitHubClient(hostName) {
     this.sendJson(request, params, typeof)
   }
 
+  override def get(request: GitHubRequest): GitHubResponse = metrics.withCounter(request.getUri) { super.get(request) }
+
+  override def getStream(request: HttpURLConnection): InputStream = metrics.withCounter(request.getURL.getPath) { super.getStream(request) }
+
+  override def post[V](uri: String, params: scala.Any, `type`: Type): V = metrics.withCounter(uri) { super.post(uri, params, `type`)}
+
+  override def postStream(uri: String, params: scala.Any): InputStream = metrics.withCounter(uri) { super.postStream(uri, params) }
+
+  override def put[V](uri: String, params: scala.Any, `type`: Type): V = metrics.withCounter(uri) { super.put(uri, params, `type`) }
+
+  override def delete(uri: String, params: scala.Any): Unit = metrics.withCounter(uri) { super.delete(uri, params)}
 }

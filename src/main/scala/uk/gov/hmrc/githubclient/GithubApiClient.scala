@@ -24,13 +24,11 @@ import org.eclipse.egit.github.core.service._
 import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, RepositoryContents, RepositoryHook}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 
 case class APIRateLimitExceededException(exception: Throwable) extends RuntimeException(exception)
 
 
 trait GithubApiClient {
-
 
   import GithubApiClient._
 
@@ -41,74 +39,58 @@ trait GithubApiClient {
   val repositoryService: RepositoryService
   val contentsService: ExtendedContentsService
   val releaseService: ReleaseService
-  val metrics: GithubClientMetrics
 
+  def getOrganisations(implicit ec: ExecutionContext): Future[List[GhOrganisation]] = Future {
+    orgService.getOrganizations.toList.map { go =>
+      GhOrganisation(go.getLogin, go.getId)
+    }
+  }.checkForApiRateLimitError
 
-  def getOrganisations(implicit ec: ExecutionContext): Future[List[GhOrganisation]] = metrics.withCounter(s"orgs") {
-    Future {
-      orgService.getOrganizations.toList.map { go =>
-        GhOrganisation(go.getLogin, go.getId)
-      }
-    }.checkForApiRateLimitError
-  }
+  def getTeamsForOrganisation(org: String)(implicit ec: ExecutionContext): Future[List[GhTeam]] = Future {
+    teamService.getTeams(org).toList.map { gt =>
+      GhTeam(gt.getName, gt.getId)
+    }
+  }.checkForApiRateLimitError
 
-  def getTeamsForOrganisation(org: String)(implicit ec: ExecutionContext): Future[List[GhTeam]] = metrics.withCounter(s"teams") {
-    Future {
-      teamService.getTeams(org).toList.map { gt =>
-        GhTeam(gt.getName, gt.getId)
-      }
-    }.checkForApiRateLimitError
-  }
+  def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] = Future {
+    teamService.getRepositories(teamId.toInt).toList.map { gr =>
+      GhRepository(gr.getName, Option(gr.getDescription).getOrElse(""), gr.getId, gr.getHtmlUrl, gr.isFork, gr.getCreatedAt.getTime, gr.getPushedAt.getTime, gr.isPrivate, Option(gr.getLanguage).getOrElse(""))
+    }
+  }.checkForApiRateLimitError
 
-  def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] = metrics.withCounter(s"repos") {
-    Future {
-      teamService.getRepositories(teamId.toInt).toList.map { gr =>
-        GhRepository(gr.getName, Option(gr.getDescription).getOrElse(""), gr.getId, gr.getHtmlUrl, gr.isFork, gr.getCreatedAt.getTime, gr.getPushedAt.getTime, gr.isPrivate, Option(gr.getLanguage).getOrElse(""))
-      }
-    }.checkForApiRateLimitError
-  }
+  def getReleases(org: String, repoName: String)(implicit ec: ExecutionContext): Future[List[GhRepoRelease]] = Future {
+    releaseService.getReleases(org, repoName)
+  }.checkForApiRateLimitError
 
-  def getReleases(org: String, repoName: String)(implicit ec: ExecutionContext): Future[List[GhRepoRelease]] = metrics.withCounter(s"releases") {
-    Future {
-      releaseService.getReleases(org, repoName)
-    }.checkForApiRateLimitError
-  }
+  def getTags(org: String, repoName: String)(implicit ec: ExecutionContext): Future[List[String]] = Future {
+    repositoryService.getTags(repositoryId(repoName, org)).map(_.getName).toList
+  }.checkForApiRateLimitError
 
-  def getTags(org: String, repoName: String)(implicit ec: ExecutionContext): Future[List[String]] = metrics.withCounter(s"tags") {
-    Future {
-      repositoryService.getTags(repositoryId(repoName, org)).map(_.getName).toList
-    }.checkForApiRateLimitError
-  }
-
-  def repoContainsContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext): Future[Boolean] = metrics.withCounter(s"containsContent") {
-    Future {
-      try {
-        contentsService.getContents(repositoryId(repoName, orgName), path).nonEmpty
-      } catch {
-        case e if isRateLimit(e) =>
-          rateLimitError(e)
-        case e: Throwable =>
-          Log.warn(s"repoContainsContent: error getting contents for path:($path) :$repoName :$orgName errMessage : ${e.getMessage}")
-          false
-      }
+  def repoContainsContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext): Future[Boolean] = Future {
+    try {
+      contentsService.getContents(repositoryId(repoName, orgName), path).nonEmpty
+    } catch {
+      case e if isRateLimit(e) =>
+        rateLimitError(e)
+      case e: Throwable =>
+        Log.warn(s"repoContainsContent: error getting contents for path:($path) :$repoName :$orgName errMessage : ${e.getMessage}")
+        false
     }
   }
 
   private def isDirectory(path: String, contents: Seq[RepositoryContents]) =
     contents.head.getPath != path
 
-  def getFileContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext): Future[Option[String]] = metrics.withCounter(s"fileContent") {
-    Future {
-      try {
-        val contents = contentsService.getContents(repositoryId(repoName, orgName), path)
-        if (contents.isEmpty || isDirectory(path, contents)) None else Some(new String(Base64.getMimeDecoder.decode(contents.head.getContent)))
-      } catch {
-        case e if isRateLimit(e) =>
-          rateLimitError(e)
-        case e: Throwable =>
-          Log.warn(s"getFileContent: error getting file content for path: $path :$repoName :$orgName errMessage : ${e.getMessage}")
-          None
-      }
+  def getFileContent(path: String, repoName: String, orgName: String)(implicit ec: ExecutionContext): Future[Option[String]] = Future {
+    try {
+      val contents = contentsService.getContents(repositoryId(repoName, orgName), path)
+      if (contents.isEmpty || isDirectory(path, contents)) None else Some(new String(Base64.getMimeDecoder.decode(contents.head.getContent)))
+    } catch {
+      case e if isRateLimit(e) =>
+        rateLimitError(e)
+      case e: Throwable =>
+        Log.warn(s"getFileContent: error getting file content for path: $path :$repoName :$orgName errMessage : ${e.getMessage}")
+        None
     }
   }
 
@@ -118,71 +100,59 @@ trait GithubApiClient {
     }
   }
 
-  def containsRepo(orgName: String, repoName: String)(implicit ec: ExecutionContext): Future[Boolean] = metrics.withCounter(s"containsRepo") {
-    Future {
-      try {
-        repositoryService.getRepository(orgName, repoName) != null
-      }
-      catch {
-        case e if isRateLimit(e) =>
-          rateLimitError(e)
-        case ex: RequestException =>
-          Log.warn(s"containsRepo: error getting repo for :$repoName :$orgName errMessage : ${ex.getMessage}")
-          if (ex.getMessage.contains("404")) false
-          else throw ex;
-      }
+  def containsRepo(orgName: String, repoName: String)(implicit ec: ExecutionContext): Future[Boolean] = Future {
+    try {
+      repositoryService.getRepository(orgName, repoName) != null
+    }
+    catch {
+      case e if isRateLimit(e) =>
+        rateLimitError(e)
+      case ex: RequestException =>
+        Log.warn(s"containsRepo: error getting repo for :$repoName :$orgName errMessage : ${ex.getMessage}")
+        if (ex.getMessage.contains("404")) false
+        else throw ex;
     }
   }
 
-  def teamId(orgName: String, team: String)(implicit ec: ExecutionContext): Future[Option[Int]] = metrics.withCounter(s"teams") {
-    Future {
-      teamService.getTeams(orgName).toList.find(t => t.getName == team).map(_.getId)
-    }.checkForApiRateLimitError
-  }
+  def teamId(orgName: String, team: String)(implicit ec: ExecutionContext): Future[Option[Int]] = Future {
+    teamService.getTeams(orgName).toList.find(t => t.getName == team).map(_.getId)
+  }.checkForApiRateLimitError
 
-  def createRepo(orgName: String, repoName: String)(implicit ec: ExecutionContext) = metrics.withCounter(s"createRepo") {
-    Future {
-      val newRepo = repositoryService.createRepository(
-        orgName,
-        new Repository().setName(repoName).setPrivate(false).setHasIssues(true).setHasWiki(true).setHasDownloads(true))
+  def createRepo(orgName: String, repoName: String)(implicit ec: ExecutionContext) = Future {
+    val newRepo = repositoryService.createRepository(
+      orgName,
+      new Repository().setName(repoName).setPrivate(false).setHasIssues(true).setHasWiki(true).setHasDownloads(true))
 
-      newRepo.getCloneUrl
-    }.checkForApiRateLimitError
-  }
+    newRepo.getCloneUrl
+  }.checkForApiRateLimitError
 
-  def addRepoToTeam(orgName: String, repoName: String, teamId: Int)(implicit ec: ExecutionContext): Future[Unit] = metrics.withCounter(s"addRepoToTeam") {
-    Future {
-      teamService.addRepository(teamId, repositoryId(repoName, orgName))
-    }.checkForApiRateLimitError
-  }
+  def addRepoToTeam(orgName: String, repoName: String, teamId: Int)(implicit ec: ExecutionContext): Future[Unit] = Future {
+    teamService.addRepository(teamId, repositoryId(repoName, orgName))
+  }.checkForApiRateLimitError
 
   def createHook(orgName: String,
                  repoName: String,
                  hookName: String,
                  config: Map[String, String],
-                 active: Boolean = true)(implicit ec: ExecutionContext): Future[RepositoryHook] = metrics.withCounter(s"createHook") {
-    Future {
+                 active: Boolean = true)(implicit ec: ExecutionContext): Future[RepositoryHook] = Future {
 
-      val idProvider = new IRepositoryIdProvider {
-        val generateId: String = orgName + "/" + repoName
-      }
+    val idProvider = new IRepositoryIdProvider {
+      val generateId: String = orgName + "/" + repoName
+    }
 
-      repositoryService.createHook(
-        idProvider,
-        new RepositoryHook().setName(hookName).setConfig(config).setActive(active))
-    }.checkForApiRateLimitError
-  }
+    repositoryService.createHook(
+      idProvider,
+      new RepositoryHook().setName(hookName).setConfig(config).setActive(active))
+  }.checkForApiRateLimitError
 
   def createFile(orgName: String, repoName: String, pathAndFileName: String, contents: String, message: String)(implicit ec: ExecutionContext): Future[Unit] = {
     if (message.isEmpty)
       Future.failed(new RuntimeException("Commit message must be provided"))
     else
-      metrics.withCounter(s"createFile") {
-        Future {
-          val encodedContents = BaseEncoding.base64().encode(contents.getBytes)
-          contentsService.createFile(orgName, repoName, pathAndFileName, encodedContents, message)
-        }.checkForApiRateLimitError
-      }
+      Future {
+        val encodedContents = BaseEncoding.base64().encode(contents.getBytes)
+        contentsService.createFile(orgName, repoName, pathAndFileName, encodedContents, message)
+      }.checkForApiRateLimitError
   }
 
 
@@ -191,7 +161,7 @@ trait GithubApiClient {
 object GithubApiClient {
 
   def apply(apiUrl: String, apiToken: String, metrics: GithubClientMetrics = DefaultGithubClientMetrics): GithubApiClient = {
-    val client: ExtendedGitHubClient = ExtendedGitHubClient(apiUrl)
+    val client: ExtendedGitHubClient = ExtendedGitHubClient(apiUrl, metrics)
       .setOAuth2Token(apiToken)
       .asInstanceOf[ExtendedGitHubClient]
 
@@ -201,7 +171,6 @@ object GithubApiClient {
       val repositoryService: RepositoryService = new RepositoryService(client)
       val contentsService: ExtendedContentsService = new ExtendedContentsService(client)
       val releaseService: ReleaseService = new ReleaseService(client)
-      val metrics: GithubClientMetrics = metrics
     }
   }
 

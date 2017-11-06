@@ -31,6 +31,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{BeforeAndAfterEach, Matchers, OneInstancePerTest, WordSpec}
 
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
 
@@ -76,6 +77,10 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       Mockito.when(mockOrgService.getOrganizations).thenThrow(rateLimitException)
 
       whenReady(githubApiClient.getOrganisations.failed){e => e shouldBe apiRateLimitExceeded}
+    }
+
+    "generates metrics" in new Setup {
+
     }
   }
 
