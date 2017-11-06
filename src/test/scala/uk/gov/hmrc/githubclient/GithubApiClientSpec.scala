@@ -53,6 +53,7 @@ class GithubApiClientSpec extends WordSpec with MockitoSugar with ScalaFutures w
       val repositoryService: RepositoryService = mockRepositoryService
       val contentsService: ExtendedContentsService = mockContentsService
       val releaseService = mockReleaseService
+      val metrics: GithubClientMetrics = DefaultGithubClientMetrics
     }
   }
 
