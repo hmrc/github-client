@@ -23,12 +23,14 @@ import java.util
 
 import org.eclipse.egit.github.core.client.{GitHubClient, GitHubRequest, GitHubResponse}
 
-object ExtendedGitHubClient
-{
+import scala.concurrent.{Await, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
+
+object ExtendedGitHubClient {
   def apply(url: String, metrics: GithubClientMetrics): ExtendedGitHubClient = {
     try {
       var e = new URL(url).getHost
-      if("github.com".equals(e) || "gist.github.com".equals(e)) {
+      if ("github.com".equals(e) || "gist.github.com".equals(e)) {
         e = "api.github.com"
       }
 
@@ -40,7 +42,7 @@ object ExtendedGitHubClient
 }
 
 class ExtendedGitHubClient(hostName: String, metrics: GithubClientMetrics) extends GitHubClient(hostName) {
-  private def sendJson[V](request: HttpURLConnection, params: util.HashMap[String, String], typeOf: Type) : Option[V] = {
+  private def sendJson[V](request: HttpURLConnection, params: util.HashMap[String, String], typeOf: Type): Option[V] = {
     this.sendParams(request, params)
     val code = request.getResponseCode
 
@@ -65,15 +67,31 @@ class ExtendedGitHubClient(hostName: String, metrics: GithubClientMetrics) exten
     this.sendJson(request, params, typeof)
   }
 
-  override def get(request: GitHubRequest): GitHubResponse = metrics.withCounter(request.getUri) { super.get(request) }
+  import scala.concurrent.duration._
 
-  override def getStream(request: HttpURLConnection): InputStream = metrics.withCounter(request.getURL.getPath) { super.getStream(request) }
+  val timeout = 20.seconds
 
-  override def post[V](uri: String, params: scala.Any, `type`: Type): V = metrics.withCounter(uri) { super.post(uri, params, `type`)}
+  override def get(request: GitHubRequest): GitHubResponse = Await.result ( metrics.withCounter(request.getUri) {
+    Future { super.get(request) }
+  }, timeout )
 
-  override def postStream(uri: String, params: scala.Any): InputStream = metrics.withCounter(uri) { super.postStream(uri, params) }
+  override def getStream(request: HttpURLConnection): InputStream = Await.result ( metrics.withCounter(request.getURL.getPath) {
+    Future { super.getStream(request) }
+  }, timeout )
 
-  override def put[V](uri: String, params: scala.Any, `type`: Type): V = metrics.withCounter(uri) { super.put(uri, params, `type`) }
+  override def post[V](uri: String, params: scala.Any, `type`: Type): V =  Await.result ( metrics.withCounter(uri) {
+    Future {super.post(uri, params, `type`) }
+  }, timeout )
 
-  override def delete(uri: String, params: scala.Any): Unit = metrics.withCounter(uri) { super.delete(uri, params)}
+  override def postStream(uri: String, params: scala.Any): InputStream =  Await.result ( metrics.withCounter(uri) {
+      Future {super.postStream(uri, params) }
+  }, timeout )
+
+  override def put[V](uri: String, params: scala.Any, `type`: Type): V =  Await.result ( metrics.withCounter(uri) {
+        Future {super.put(uri, params, `type`) }
+  }, timeout )
+
+  override def delete(uri: String, params: scala.Any): Unit = Await.result (metrics.withCounter(uri) {
+          Future {super.delete(uri, params) }
+  }, timeout )
 }

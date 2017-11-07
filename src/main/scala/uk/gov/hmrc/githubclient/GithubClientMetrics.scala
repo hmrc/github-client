@@ -18,13 +18,16 @@ package uk.gov.hmrc.githubclient
 
 import play.api.Logger
 
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
+
 trait GithubClientMetrics {
 
   def metricName: String
 
   def increment(name: String): Unit
 
-  def withCounter[T](path: String)(call: T): T = {
+  def withCounter[T](path: String)(call: Future[T])(implicit ec:ExecutionContext): Future[T] = {
 
     val name = path
       .replace("/api/v3", "")
@@ -32,16 +35,13 @@ trait GithubClientMetrics {
       .find(_.nonEmpty)
       .getOrElse("default")
 
-    try {
-      val response = call
-      increment(s"$metricName.$name.success")
-      Logger.trace(s"Increment metric for $metricName.$name.success, path: $path")
-      response
-    } catch {
-      case e: Exception =>
+    call.andThen {
+      case Success(_) =>
+        increment(s"$metricName.$name.success")
+        Logger.trace(s"Increment metric for $metricName.$name.success, path: $path")
+      case Failure(_) =>
         increment(s"$metricName.$name.failure")
         Logger.trace(s"Increment metric for $metricName.$name.failure, path: $path")
-        throw e
     }
   }
 }
