@@ -17,7 +17,6 @@
 package uk.gov.hmrc.githubclient
 
 import java.io.File
-import java.nio.file.Path
 
 import com.typesafe.config.ConfigFactory
 
@@ -26,11 +25,11 @@ case class GitApiConfig(user: String, key: String, apiUrl :String)
 object GitApiConfig {
 
    def fromFile(configFilePath: String): GitApiConfig = {
-    findGithubCredsInFile(new File(configFilePath).toPath).getOrElse(throw new RuntimeException(s"could not find github credential in file : $configFilePath"))
+    findGithubCredsInFile(new File(configFilePath)).getOrElse(throw new RuntimeException(s"could not find github credential in file : $configFilePath"))
   }
 
-  private def findGithubCredsInFile(file: Path): Option[GitApiConfig] = {
-    val conf = ConfigFactory.parseFile(file.toFile)
+  private def findGithubCredsInFile(file: File): Option[GitApiConfig] = {
+    val conf = ConfigFactory.parseFile(file)
 
     for {
       user <- Some(conf.getString("user"))
