@@ -1,0 +1,7 @@
+user=bob
+
+# i am a comment
+api-url="http://myapi.com"
+token=1234ABCD
+
+

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 HM Revenue & Customs
+ * Copyright 2018 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ package uk.gov.hmrc.githubclient
 import java.io.File
 import java.nio.file.Path
 
+import com.typesafe.config.ConfigFactory
+
 case class GitApiConfig(user: String, key: String, apiUrl :String)
 
 object GitApiConfig {
@@ -28,12 +30,12 @@ object GitApiConfig {
   }
 
   private def findGithubCredsInFile(file: Path): Option[GitApiConfig] = {
-    val conf = new ConfigFile(file)
+    val conf = ConfigFactory.parseFile(file.toFile)
 
     for {
-      user <- conf.get("user")
-      token <- conf.get("token")
-      apiUrl <- conf.get("api-url")
+      user <- Some(conf.getString("user"))
+      token <- Some(conf.getString("token"))
+      apiUrl <- Some(conf.getString("api-url"))
     } yield GitApiConfig(user, token, apiUrl)
   }
 
