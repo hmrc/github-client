@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 HM Revenue & Customs
+ * Copyright 2018 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,23 +17,24 @@
 package uk.gov.hmrc.githubclient
 
 import java.io.File
-import java.nio.file.Path
+
+import com.typesafe.config.ConfigFactory
 
 case class GitApiConfig(user: String, key: String, apiUrl :String)
 
 object GitApiConfig {
 
    def fromFile(configFilePath: String): GitApiConfig = {
-    findGithubCredsInFile(new File(configFilePath).toPath).getOrElse(throw new RuntimeException(s"could not find github credential in file : $configFilePath"))
+    findGithubCredsInFile(new File(configFilePath)).getOrElse(throw new RuntimeException(s"could not find github credential in file : $configFilePath"))
   }
 
-  private def findGithubCredsInFile(file: Path): Option[GitApiConfig] = {
-    val conf = new ConfigFile(file)
+  private def findGithubCredsInFile(file: File): Option[GitApiConfig] = {
+    val conf = ConfigFactory.parseFile(file)
 
     for {
-      user <- conf.get("user")
-      token <- conf.get("token")
-      apiUrl <- conf.get("api-url")
+      user <- Some(conf.getString("user"))
+      token <- Some(conf.getString("token"))
+      apiUrl <- Some(conf.getString("api-url"))
     } yield GitApiConfig(user, token, apiUrl)
   }
 

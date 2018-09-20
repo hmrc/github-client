@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 HM Revenue & Customs
+ * Copyright 2018 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,24 +16,24 @@
 
 package uk.gov.hmrc.githubclient
 
-import java.nio.file.Path
+import java.io.File
 
-import scala.io.Source
+import org.scalatest.{Matchers, WordSpec}
 
-class ConfigFile(filePath: Path) {
+class GitApiConfigTest extends WordSpec with Matchers {
 
-   private val kvMap: Map[String, String] = {
-     try {
-       Source.fromFile(filePath.toFile)
-         .getLines().toSeq
-         .map(_.split("="))
-         .map { case Array(key, value) => key.trim -> value.trim}.toMap
-     } catch {
-       case e: Exception => {
-         Map.empty
-       }
-     }
-   }
+  "GitApiConfig" should {
+    "load from good config file" in {
+      val myResource = getClass.getClassLoader.getResource("configFileTest")
+      val myPath = new File(myResource.getPath).toPath
 
-   def get(path: String) = kvMap.get(path)
- }
+      val myConfig = GitApiConfig.fromFile(myPath.toString)
+
+      myConfig.user shouldBe "bob"
+      myConfig.key shouldBe "1234ABCD"
+      myConfig.apiUrl shouldBe "http://myapi.com"
+
+    }
+
+  }
+}
