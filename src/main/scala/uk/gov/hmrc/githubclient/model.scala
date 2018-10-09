@@ -37,3 +37,28 @@ case class GhRepository(
 case class GhRepoRelease(id: Long, tagName: String, createdAt: Date)
 
 case class GhRepoTag(name: String)
+
+case class OrganisationName(value: String) extends AnyVal {
+  override def toString: String = value
+}
+
+case class RepositoryName(value: String) extends AnyVal {
+  override def toString: String = value
+}
+
+case class HookConfig(url: Url, contentType: Option[ContentType] = None, secret: Option[Secret] = None)
+
+case class Url(value: String) extends AnyVal {
+  override def toString: String = value
+}
+
+sealed abstract class ContentType(val value: String)
+
+object ContentType {
+  case object Form extends ContentType("form")
+  case object Json extends ContentType("json")
+}
+
+case class Secret(value: String) extends AnyVal {
+  override def toString: String = value
+}

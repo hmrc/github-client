@@ -90,7 +90,7 @@ class ExtendedGitHubClient(hostName: String, metrics: GithubClientMetrics) exten
 
   override def post[V](uri: String, params: scala.Any, `type`: Type): V =
     Await.result(metrics.withCounter(uri) {
-      Future { super.post(uri, params, `type`) }
+      Future { super.post[V](uri, params, `type`) }
     }, timeout)
 
   override def postStream(uri: String, params: scala.Any): InputStream =
@@ -100,7 +100,7 @@ class ExtendedGitHubClient(hostName: String, metrics: GithubClientMetrics) exten
 
   override def put[V](uri: String, params: scala.Any, `type`: Type): V =
     Await.result(metrics.withCounter(uri) {
-      Future { super.put(uri, params, `type`) }
+      Future { super.put[V](uri, params, `type`) }
     }, timeout)
 
   override def delete(uri: String, params: scala.Any): Unit =

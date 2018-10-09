@@ -27,18 +27,19 @@ import org.mockito.Matchers.{any, same}
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
 import org.mockito.{ArgumentCaptor, Mockito}
+import org.scalatest.Matchers._
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.mock.MockitoSugar
-import org.scalatest.{BeforeAndAfterEach, Matchers, OneInstancePerTest, WordSpec}
+import org.scalatest.mockito.MockitoSugar
+import org.scalatest.{BeforeAndAfterEach, OneInstancePerTest, WordSpec}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
+import scala.language.postfixOps
 
 class GithubApiClientSpec
     extends WordSpec
     with MockitoSugar
     with ScalaFutures
-    with Matchers
     with BeforeAndAfterEach
     with OneInstancePerTest
     with IntegrationPatience {
@@ -403,6 +404,7 @@ class GithubApiClientSpec
   "GitHubAPIClient.addRepoToTeam" should {
     val organisation = "HMRC"
     val repoName     = "test-repo"
+
     "add a repository to a team in" in new Setup {
 
       var teamId: Int                       = 0
@@ -426,42 +428,6 @@ class GithubApiClientSpec
       Mockito.when(mockTeamService.addRepository(any(), any())).thenThrow(rateLimitException)
 
       whenReady(githubApiClient.addRepoToTeam(organisation, repoName, 99).failed) { e =>
-        e shouldBe apiRateLimitExceeded
-      }
-    }
-  }
-
-  "GitHubAPIClient.createHook" should {
-    val organisation = "HMRC"
-    val repoName     = "test-repo"
-    val hookName     = "jenkins"
-    val config       = Map("jenkins_hook_url" -> "url")
-
-    "add the given hook to the repository" ignore new Setup {
-      githubApiClient.createHook(organisation, repoName, hookName, config)
-
-      case class Arguments(idProvider: IRepositoryIdProvider, hook: RepositoryHook)
-
-      val (future, answer) = buildAnswer2(Arguments.apply _)
-
-      Mockito.when(mockRepositoryService.createHook(any(), any())).thenAnswer(answer)
-
-      githubApiClient.addRepoToTeam(organisation, repoName, 99)
-
-      val args = future.futureValue
-
-      args.idProvider.generateId() shouldBe "HMRC/test-repo"
-
-      args.hook.getConfig()("jenkins_hook_url") shouldBe "url"
-      args.hook.getName                         shouldBe "jenkins"
-      args.hook.isActive                        shouldBe true
-    }
-
-    "handle API rate limit error" in new Setup {
-
-      Mockito.when(mockRepositoryService.createHook(any(), any())).thenThrow(rateLimitException)
-
-      whenReady(githubApiClient.createHook(organisation, repoName, hookName, Map(), true).failed) { e =>
         e shouldBe apiRateLimitExceeded
       }
     }

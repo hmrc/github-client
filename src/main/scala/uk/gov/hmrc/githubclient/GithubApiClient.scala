@@ -23,9 +23,8 @@ import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service._
 import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, RepositoryContents, RepositoryHook}
 
+import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
-
-case class APIRateLimitExceededException(exception: Throwable) extends RuntimeException(exception)
 
 trait GithubApiClient {
 
@@ -152,20 +151,16 @@ trait GithubApiClient {
     }.checkForApiRateLimitError
 
   def createHook(
-    orgName: String,
-    repoName: String,
-    hookName: String,
-    config: Map[String, String],
-    active: Boolean = true)(implicit ec: ExecutionContext): Future[RepositoryHook] =
+    orgName: OrganisationName,
+    repoName: RepositoryName,
+    config: HookConfig,
+    events: Set[String] = Set.empty,
+    active: Boolean     = true)(implicit ec: ExecutionContext): Future[RepositoryHook] =
     Future {
-
-      val idProvider = new IRepositoryIdProvider {
-        val generateId: String = orgName + "/" + repoName
-      }
-
       repositoryService.createHook(
-        idProvider,
-        new RepositoryHook().setName(hookName).setConfig(config).setActive(active))
+        IdProvider(orgName, repoName),
+        WebHook(config, active, events)
+      )
     }.checkForApiRateLimitError
 
   def createFile(orgName: String, repoName: String, pathAndFileName: String, contents: String, message: String)(
@@ -177,7 +172,6 @@ trait GithubApiClient {
         val encodedContents = BaseEncoding.base64().encode(contents.getBytes)
         contentsService.createFile(orgName, repoName, pathAndFileName, encodedContents, message)
       }.checkForApiRateLimitError
-
 }
 
 object GithubApiClient {
@@ -202,7 +196,7 @@ object GithubApiClient {
   private def isRateLimit(e: Throwable): Boolean = e.getMessage.toLowerCase.contains("api rate limit exceeded")
 
   implicit class RateLimit[T](theFuture: Future[T]) {
-    def checkForApiRateLimitError(implicit executionContext: ExecutionContext): Future[T] = theFuture.recoverWith {
+    def checkForApiRateLimitError(implicit executionContext: ExecutionContext): Future[T] = theFuture recoverWith {
       case e if isRateLimit(e) => rateLimitError(e)
     }
   }
@@ -211,4 +205,32 @@ object GithubApiClient {
     Log.error("=== API rate limit has been reached ===", e)
     throw APIRateLimitExceededException(e)
   }
+
+  private[githubclient] case class WebHook(events: Array[String]) extends RepositoryHook
+
+  private[githubclient] object WebHook {
+
+    def apply(config: HookConfig, active: Boolean, events: Set[String] = Set.empty): RepositoryHook =
+      WebHook(events.toArray)
+        .setName("web")
+        .setConfig(config.toMap)
+        .setActive(active)
+
+    private implicit class HookConfigOps(hookConfig: HookConfig) {
+      def toMap: java.util.Map[String, String] =
+        Seq(
+          Option("url" -> hookConfig.url.toString),
+          hookConfig.contentType.map(ct => "content_type" -> ct.toString),
+          hookConfig.secret.map(s => "secret"             -> s.toString)
+        ).flatten.toMap.asJava
+    }
+  }
 }
+
+private object IdProvider {
+  def apply(orgName: OrganisationName, repoName: RepositoryName): IRepositoryIdProvider = new IRepositoryIdProvider {
+    val generateId: String = s"$orgName/$repoName"
+  }
+}
+
+case class APIRateLimitExceededException(exception: Throwable) extends RuntimeException(exception)

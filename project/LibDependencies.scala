@@ -11,6 +11,7 @@ private object LibDependencies {
   val test: Seq[ModuleID] = Seq(
     "org.mockito"   % "mockito-core" % "1.9.5" % Test,
     "org.pegdown"   % "pegdown"      % "1.6.0" % Test,
+    "org.scalamock" %% "scalamock"   % "4.1.0" % Test,
     "org.scalatest" %% "scalatest"   % "3.0.5" % Test
   )
 }
