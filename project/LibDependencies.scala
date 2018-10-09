@@ -1,6 +1,6 @@
 import sbt._
 
-private object AppDependencies {
+private object LibDependencies {
 
   val compile: Seq[ModuleID] = Seq(
     "com.github.scopt"         %% "scopt"                       % "3.7.0",

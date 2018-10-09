@@ -7,5 +7,5 @@ lazy val library = Project(appName, file("."))
   .settings(
     majorVersion := 1,
     makePublicallyAvailableOnBintray := true,
-    libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test
+    libraryDependencies ++= LibDependencies.compile ++ LibDependencies.test
   )
