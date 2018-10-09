@@ -22,15 +22,17 @@ case class GhOrganisation(login: String, id: Int = 0)
 
 case class GhTeam(name: String, id: Long)
 
-case class GhRepository(name: String,
-                        description: String,
-                        id: Long,
-                        htmlUrl: String,
-                        fork: Boolean = false,
-                        createdDate: Long,
-                        lastActiveDate: Long,
-                        isPrivate: Boolean,
-                        language: String)
+case class GhRepository(
+  name: String,
+  description: String,
+  id: Long,
+  htmlUrl: String,
+  fork: Boolean = false,
+  createdDate: Long,
+  lastActiveDate: Long,
+  isPrivate: Boolean,
+  language: String
+)
 
 case class GhRepoRelease(id: Long, tagName: String, createdAt: Date)
 

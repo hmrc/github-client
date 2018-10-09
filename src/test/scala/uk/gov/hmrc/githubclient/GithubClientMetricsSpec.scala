@@ -22,18 +22,19 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.mutable
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class GithubClientMetricsSpec extends WordSpec with ScalaFutures with Matchers with IntegrationPatience {
-
 
   "GithubClientMetrics" should {
 
     "record successes" in new TestCase {
-      metrics.withCounter("/repos/my-repository") {
-        Future { 1 } // performs the successful operation of returning 1
-      }.futureValue
+      metrics
+        .withCounter("/repos/my-repository") {
+          Future { 1 } // performs the successful operation of returning 1
+        }
+        .futureValue
 
       capturedMetrics should contain {
         "test.repos.success" -> 1
@@ -42,9 +43,11 @@ class GithubClientMetricsSpec extends WordSpec with ScalaFutures with Matchers w
 
     "record failures" in new TestCase {
       intercept[Exception] {
-        metrics.withCounter("/repos/my-repository") {
-          Future { throw new IOException("API rate limit exceeded for service-platform-operations.") }
-        }.futureValue
+        metrics
+          .withCounter("/repos/my-repository") {
+            Future { throw new IOException("API rate limit exceeded for service-platform-operations.") }
+          }
+          .futureValue
       }
 
       capturedMetrics should contain {

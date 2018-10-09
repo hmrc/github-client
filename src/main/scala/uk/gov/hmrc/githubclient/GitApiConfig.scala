@@ -20,22 +20,21 @@ import java.io.File
 
 import com.typesafe.config.ConfigFactory
 
-case class GitApiConfig(user: String, key: String, apiUrl :String)
+case class GitApiConfig(user: String, key: String, apiUrl: String)
 
 object GitApiConfig {
 
-   def fromFile(configFilePath: String): GitApiConfig = {
-    findGithubCredsInFile(new File(configFilePath)).getOrElse(throw new RuntimeException(s"could not find github credential in file : $configFilePath"))
-  }
+  def fromFile(configFilePath: String): GitApiConfig =
+    findGithubCredsInFile(new File(configFilePath))
+      .getOrElse(throw new RuntimeException(s"could not find github credential in file : $configFilePath"))
 
   private def findGithubCredsInFile(file: File): Option[GitApiConfig] = {
     val conf = ConfigFactory.parseFile(file)
 
     for {
-      user <- Some(conf.getString("user"))
-      token <- Some(conf.getString("token"))
+      user   <- Some(conf.getString("user"))
+      token  <- Some(conf.getString("token"))
       apiUrl <- Some(conf.getString("api-url"))
     } yield GitApiConfig(user, token, apiUrl)
   }
-
 }

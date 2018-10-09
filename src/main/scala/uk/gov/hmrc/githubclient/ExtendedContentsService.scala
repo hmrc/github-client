@@ -23,11 +23,12 @@ import org.eclipse.egit.github.core.service.ContentsService
 
 class ExtendedContentsService(client: GitHubClient) extends ContentsService(client) {
 
-  def createFile(orgName: String,
-                          repoName: String,
-                          pathAndFileName: String,
-                          base64EncodedContents: String,
-                          commitMessage: String): Unit = {
+  def createFile(
+    orgName: String,
+    repoName: String,
+    pathAndFileName: String,
+    base64EncodedContents: String,
+    commitMessage: String): Unit = {
 
     val uri = new StringBuilder("/repos")
     uri.append(s"/$orgName")
@@ -40,6 +41,5 @@ class ExtendedContentsService(client: GitHubClient) extends ContentsService(clie
     params.put("content", base64EncodedContents)
 
     client.put(uri.toString(), params, null)
-
   }
 }

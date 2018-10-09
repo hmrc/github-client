@@ -25,15 +25,13 @@ class GitApiConfigTest extends WordSpec with Matchers {
   "GitApiConfig" should {
     "load from good config file" in {
       val myResource = getClass.getClassLoader.getResource("configFileTest")
-      val myPath = new File(myResource.getPath).toPath
+      val myPath     = new File(myResource.getPath).toPath
 
       val myConfig = GitApiConfig.fromFile(myPath.toString)
 
-      myConfig.user shouldBe "bob"
-      myConfig.key shouldBe "1234ABCD"
+      myConfig.user   shouldBe "bob"
+      myConfig.key    shouldBe "1234ABCD"
       myConfig.apiUrl shouldBe "http://myapi.com"
-
     }
-
   }
 }

@@ -27,7 +27,7 @@ trait GithubClientMetrics {
 
   def increment(name: String): Unit
 
-  def withCounter[T](path: String)(call: Future[T])(implicit ec:ExecutionContext): Future[T] = {
+  def withCounter[T](path: String)(call: Future[T])(implicit ec: ExecutionContext): Future[T] = {
 
     val name = path
       .replace("/api/v3", "")

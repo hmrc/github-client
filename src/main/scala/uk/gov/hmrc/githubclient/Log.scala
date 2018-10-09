@@ -19,7 +19,7 @@ package uk.gov.hmrc.githubclient
 import org.slf4j
 import play.api.{Logger, LoggerLike}
 
-object Log extends LoggerLike{
-  val loggerName: String = "git-hub-client"
+object Log extends LoggerLike {
+  val loggerName: String            = "git-hub-client"
   override val logger: slf4j.Logger = Logger(loggerName).logger
 }

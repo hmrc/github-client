@@ -24,7 +24,6 @@ import org.scalatest.{Matchers, WordSpec}
 
 class ReleasesServiceSpec extends WordSpec with Matchers with MockitoSugar {
 
-
   "ReleasesService.getReleases" should {
     val githubClient: GitHubClient = mock[GitHubClient]
 
@@ -38,17 +37,14 @@ class ReleasesServiceSpec extends WordSpec with Matchers with MockitoSugar {
 
       releasesService.getReleases("orgA", "repoA")
 
-
       val captor = ArgumentCaptor.forClass(classOf[GitHubRequest])
 
       Mockito.verify(githubClient).get(captor.capture())
 
       captor.getValue.getUri shouldBe "/repos/orgA/repoA/releases"
-
     }
-
   }
-    
+
   "ReleasesService.getTags" should {
 
     val githubClient: GitHubClient = mock[GitHubClient]
@@ -63,15 +59,11 @@ class ReleasesServiceSpec extends WordSpec with Matchers with MockitoSugar {
 
       releasesService.getTags("orgA", "repoA")
 
-
       val captor = ArgumentCaptor.forClass(classOf[GitHubRequest])
 
       Mockito.verify(githubClient).get(captor.capture())
 
       captor.getValue.getUri shouldBe "/repos/orgA/repoA/tags"
-
     }
-
   }
-
 }

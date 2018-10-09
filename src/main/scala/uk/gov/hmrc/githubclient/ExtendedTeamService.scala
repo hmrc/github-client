@@ -26,7 +26,7 @@ class ExtendedTeamService(client: ExtendedGitHubClient) extends TeamService(clie
   override def addRepository(id: Int, repository: IRepositoryIdProvider): Unit = {
 
     val repoId = this.getId(repository)
-    val uri = new StringBuilder("/teams")
+    val uri    = new StringBuilder("/teams")
     uri.append('/').append(id)
     uri.append("/repos")
     uri.append('/').append(repoId)
@@ -34,9 +34,8 @@ class ExtendedTeamService(client: ExtendedGitHubClient) extends TeamService(clie
     val params = new util.HashMap[String, String]()
     params.put("permission", "push")
 
-    val headers = Map ("Accept" -> "application/vnd.github.ironman-preview+json")
+    val headers = Map("Accept" -> "application/vnd.github.ironman-preview+json")
 
     client.put(uri.toString(), params, headers, classOf[Team])
   }
-
 }

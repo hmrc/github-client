@@ -18,9 +18,8 @@ package uk.gov.hmrc.githubclient
 
 import java.util
 
-import org.eclipse.egit.github.core.client.{GitHubClient, GitHubRequest, GitHubResponse}
-import org.mockito.Matchers.{eq => meq}
-import org.mockito.Matchers.any
+import org.eclipse.egit.github.core.client.{GitHubClient, GitHubResponse}
+import org.mockito.Matchers.{any, eq => meq}
 import org.mockito.{ArgumentCaptor, Mockito}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
@@ -37,7 +36,10 @@ class ExtendedContentsServiceSpec extends WordSpec with Matchers with MockitoSug
 
       val response: GitHubResponse = mock[GitHubResponse]
 
-      Mockito.when(githubClient.put(meq("/repos/orgA/repoA/contents/conf/app.conf"), any[util.HashMap[String, String]](), meq(null))).thenReturn(response)
+      Mockito
+        .when(githubClient
+          .put(meq("/repos/orgA/repoA/contents/conf/app.conf"), any[util.HashMap[String, String]](), meq(null)))
+        .thenReturn(response)
 
       contentsService.createFile("orgA", "repoA", "conf/app.conf", "contents", "message")
 
@@ -50,7 +52,5 @@ class ExtendedContentsServiceSpec extends WordSpec with Matchers with MockitoSug
       params.get("message") shouldBe "message"
       params.get("content") shouldBe "contents"
     }
-
   }
-
 }
