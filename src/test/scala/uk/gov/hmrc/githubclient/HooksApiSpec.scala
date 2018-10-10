@@ -25,8 +25,8 @@ import org.scalatest.WordSpec
 import org.scalatest.concurrent.ScalaFutures
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.githubclient.HooksApi.NewWebHook
-import uk.gov.hmrc.githubclient.WebHookEvent.{PullRequest, Push}
-import uk.gov.hmrc.githubclient.WebHookName.OtherWebHookName
+import uk.gov.hmrc.githubclient.HookEvent.{PullRequest, Push}
+import uk.gov.hmrc.githubclient.HookName.NonWebHookName
 
 import scala.collection.JavaConverters._
 import scala.concurrent.Await
@@ -106,19 +106,19 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
       hooksApi
         .findHooks(organisation, repoName)
         .futureValue shouldBe Set(
-        WebHook(
-          WebHookId(1),
+        Hook(
+          HookId(1),
           Url("http://github/hook/url/1"),
-          WebHookName.Web,
+          HookName.Web,
           active = true,
-          HookConfig(Url("http://webhook.url/1"), Some(ContentType.Form))
+          HookConfig(Url("http://webhook.url/1"), Some(HookContentType.Form))
         ),
-        WebHook(
-          WebHookId(2),
+        Hook(
+          HookId(2),
           Url("http://github/hook/url/2"),
-          OtherWebHookName("non-web"),
+          NonWebHookName("non-web"),
           active = false,
-          HookConfig(Url("http://webhook.url/2"), Some(ContentType.Json))
+          HookConfig(Url("http://webhook.url/2"), Some(HookContentType.Json))
         )
       )
     }
@@ -138,7 +138,7 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
 
   "deleteHook" should {
 
-    val hookId = WebHookId(1)
+    val hookId = HookId(1)
 
     "delete repository hook and return nothing" in new Setup {
 
@@ -169,13 +169,13 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
     }
   }
 
-  "WebHook" should {
+  "NewWebHook" should {
 
     "get serialized with all the fields" in new Setup {
       val hookConfig = HookConfig(
         Url("jenkins_hook_url"),
-        Some(ContentType.Form),
-        Some(Secret("some_secret"))
+        Some(HookContentType.Form),
+        Some(HookSecret("some_secret"))
       )
 
       val json: JsValue = Json.parse(new Gson().toJson(NewWebHook(hookConfig, active = true, events)))
@@ -184,7 +184,7 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
       (json \ "events").as[Seq[String]].toSet       shouldBe events.map(_.toString)
       (json \ "active").as[Boolean]                 shouldBe true
       (json \ "config" \ "url").as[String]          shouldBe "jenkins_hook_url"
-      (json \ "config" \ "content_type").as[String] shouldBe ContentType.Form.toString
+      (json \ "config" \ "content_type").as[String] shouldBe HookContentType.Form.toString
       (json \ "config" \ "secret").as[String]       shouldBe "some_secret"
     }
 
@@ -207,10 +207,10 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
   }
 
   private trait Setup {
-    val organisation              = OrganisationName("HMRC")
-    val repoName                  = RepositoryName("test-repo")
-    val events: Set[WebHookEvent] = Set(Push, PullRequest)
-    val config                    = HookConfig(Url("jenkins_hook_url"))
+    val organisation           = OrganisationName("HMRC")
+    val repoName               = RepositoryName("test-repo")
+    val events: Set[HookEvent] = Set(Push, PullRequest)
+    val config                 = HookConfig(Url("jenkins_hook_url"))
 
     val repositoryServiceMock: RepositoryService = mock[RepositoryService]
 

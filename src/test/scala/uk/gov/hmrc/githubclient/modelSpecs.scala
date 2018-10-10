@@ -20,36 +20,36 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import org.scalatest.prop.TableDrivenPropertyChecks
 
-class ContentTypeSpec extends WordSpec {
+class HookContentTypeSpec extends WordSpec {
 
   "ContentType.apply" should {
     "return ContentType.Form for 'form'" in {
-      ContentType("form") shouldBe ContentType.Form
+      HookContentType("form") shouldBe HookContentType.Form
     }
     "return ContentType.Json for 'json'" in {
-      ContentType("json") shouldBe ContentType.Json
+      HookContentType("json") shouldBe HookContentType.Json
     }
     "throw an IllegalArgumentException if value is neither 'json' nor 'form'" in {
-      an[IllegalArgumentException] should be thrownBy ContentType("abc")
+      an[IllegalArgumentException] should be thrownBy HookContentType("abc")
     }
   }
 }
 
-class WebHookNameSpec extends WordSpec {
+class HookNameSpec extends WordSpec {
 
-  "WebHookName.apply" should {
-    "return WebHookName.Web if value is 'web'" in {
-      WebHookName("web") shouldBe WebHookName.Web
+  "HookName.apply" should {
+    "return Web if value is 'web'" in {
+      HookName("web") shouldBe HookName.Web
     }
-    "return WebHookName if value is different than 'web'" in {
-      WebHookName("abc") shouldBe WebHookName.OtherWebHookName("abc")
+    "return NonWebHookName if value is different than 'web'" in {
+      HookName("abc") shouldBe HookName.NonWebHookName("abc")
     }
   }
 }
 
-class WebHookEventSpec extends WordSpec with TableDrivenPropertyChecks {
+class HookEventSpec extends WordSpec with TableDrivenPropertyChecks {
 
-  import WebHookEvent._
+  import HookEvent._
 
   private val scenarios = Table(
     "event name"                     -> "expected type",
@@ -93,17 +93,17 @@ class WebHookEventSpec extends WordSpec with TableDrivenPropertyChecks {
     "watch"                          -> Watch
   )
 
-  "WebHookName.apply" should {
-    "return an instance of WebHookName for a known value" in {
+  "HookName.apply" should {
+    "return an instance of HookName for a known value" in {
       forAll(scenarios) { (eventName, eventType) =>
-        WebHookEvent(eventName) shouldBe eventType
+        HookEvent(eventName) shouldBe eventType
       }
     }
-    "return a set of instances of WebHookNames for a set of known values" in {
-      WebHookEvent("push", "watch") shouldBe Set(Push, Watch)
+    "return a set of instances of HookNames for a set of known values" in {
+      HookEvent("push", "watch") shouldBe Set(Push, Watch)
     }
     "throw an IllegalArgumentException if value is not on the list of known events" in {
-      an[IllegalArgumentException] should be thrownBy WebHookEvent("abc")
+      an[IllegalArgumentException] should be thrownBy HookEvent("abc")
     }
   }
 }

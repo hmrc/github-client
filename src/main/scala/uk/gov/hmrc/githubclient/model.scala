@@ -46,103 +46,103 @@ case class RepositoryName(value: String) extends AnyVal {
   override def toString: String = value
 }
 
-case class HookConfig(url: Url, contentType: Option[ContentType] = None, secret: Option[Secret] = None)
+case class HookConfig(url: Url, contentType: Option[HookContentType] = None, secret: Option[HookSecret] = None)
 
 case class Url(value: String) extends AnyVal {
   override def toString: String = value
 }
 
-sealed abstract class ContentType(val value: String) {
+sealed abstract class HookContentType(val value: String) {
   override def toString: String = value
 }
 
-object ContentType {
-  case object Form extends ContentType("form")
-  case object Json extends ContentType("json")
+object HookContentType {
+  case object Form extends HookContentType("form")
+  case object Json extends HookContentType("json")
 
-  def apply(value: String): ContentType = value match {
-    case Form.value => ContentType.Form
-    case Json.value => ContentType.Json
+  def apply(value: String): HookContentType = value match {
+    case Form.value => HookContentType.Form
+    case Json.value => HookContentType.Json
     case other      => throw new IllegalArgumentException(s"'$other' is not a valid ContentType")
   }
 }
 
-case class Secret(value: String) extends AnyVal {
+case class HookSecret(value: String) extends AnyVal {
   override def toString: String = value
 }
 
-case class WebHook(id: WebHookId, url: Url, name: WebHookName, active: Boolean, config: HookConfig)
+case class Hook(id: HookId, url: Url, name: HookName, active: Boolean, config: HookConfig)
 
-case class WebHookId(value: Long) extends AnyVal {
+case class HookId(value: Long) extends AnyVal {
   override def toString: String = value.toString
 }
 
-sealed trait WebHookName {
+sealed trait HookName {
   val value: String
   override def toString: String = value
 }
 
-object WebHookName {
-  case object Web extends WebHookName {
+object HookName {
+  case object Web extends HookName {
     override val value: String = "web"
   }
-  case class OtherWebHookName(value: String) extends WebHookName
+  case class NonWebHookName(value: String) extends HookName
 
-  def apply(value: String): WebHookName = value match {
+  def apply(value: String): HookName = value match {
     case Web.value => Web
-    case other     => OtherWebHookName(other)
+    case other     => NonWebHookName(other)
   }
 }
 
-sealed abstract class WebHookEvent(val value: String) {
+sealed abstract class HookEvent(val value: String) {
   override def toString: String = value
 }
 
-object WebHookEvent {
-  case object CheckRun extends WebHookEvent("check_run")
-  case object CheckSuite extends WebHookEvent("check_suite")
-  case object CommitComment extends WebHookEvent("commit_comment")
-  case object Create extends WebHookEvent("create")
-  case object Delete extends WebHookEvent("delete")
-  case object Deployment extends WebHookEvent("deployment")
-  case object DeploymentStatus extends WebHookEvent("deployment_status")
-  case object Download extends WebHookEvent("download")
-  case object Follow extends WebHookEvent("follow")
-  case object Fork extends WebHookEvent("fork")
-  case object ForkApply extends WebHookEvent("fork_apply")
-  case object GithubAppAuthorization extends WebHookEvent("github_app_authorization")
-  case object Gist extends WebHookEvent("gist")
-  case object Gollum extends WebHookEvent("gollum")
-  case object Installation extends WebHookEvent("installation")
-  case object InstallationRepositories extends WebHookEvent("installation_repositories")
-  case object IssueComment extends WebHookEvent("issue_comment")
-  case object Issues extends WebHookEvent("issues")
-  case object Label extends WebHookEvent("label")
-  case object MarketplacePurchase extends WebHookEvent("marketplace_purchase")
-  case object Member extends WebHookEvent("member")
-  case object Membership extends WebHookEvent("membership")
-  case object Milestone extends WebHookEvent("milestone")
-  case object Organization extends WebHookEvent("organization")
-  case object OrgBlock extends WebHookEvent("org_block")
-  case object PageBuild extends WebHookEvent("page_build")
-  case object ProjectCard extends WebHookEvent("project_card")
-  case object ProjectColumn extends WebHookEvent("project_column")
-  case object Project extends WebHookEvent("project")
-  case object Public extends WebHookEvent("public")
-  case object PullRequest extends WebHookEvent("pull_request")
-  case object PullRequestReview extends WebHookEvent("pull_request_review")
-  case object PullRequestReviewComment extends WebHookEvent("pull_request_review_comment")
-  case object Push extends WebHookEvent("push")
-  case object Release extends WebHookEvent("release")
-  case object Repository extends WebHookEvent("repository")
-  case object RepositoryImport extends WebHookEvent("repository_import")
-  case object RepositoryVulnerabilityAlert extends WebHookEvent("repository_vulnerability_alert")
-  case object Status extends WebHookEvent("status")
-  case object Team extends WebHookEvent("team")
-  case object TeamAdd extends WebHookEvent("team_add")
-  case object Watch extends WebHookEvent("watch")
+object HookEvent {
+  case object CheckRun extends HookEvent("check_run")
+  case object CheckSuite extends HookEvent("check_suite")
+  case object CommitComment extends HookEvent("commit_comment")
+  case object Create extends HookEvent("create")
+  case object Delete extends HookEvent("delete")
+  case object Deployment extends HookEvent("deployment")
+  case object DeploymentStatus extends HookEvent("deployment_status")
+  case object Download extends HookEvent("download")
+  case object Follow extends HookEvent("follow")
+  case object Fork extends HookEvent("fork")
+  case object ForkApply extends HookEvent("fork_apply")
+  case object GithubAppAuthorization extends HookEvent("github_app_authorization")
+  case object Gist extends HookEvent("gist")
+  case object Gollum extends HookEvent("gollum")
+  case object Installation extends HookEvent("installation")
+  case object InstallationRepositories extends HookEvent("installation_repositories")
+  case object IssueComment extends HookEvent("issue_comment")
+  case object Issues extends HookEvent("issues")
+  case object Label extends HookEvent("label")
+  case object MarketplacePurchase extends HookEvent("marketplace_purchase")
+  case object Member extends HookEvent("member")
+  case object Membership extends HookEvent("membership")
+  case object Milestone extends HookEvent("milestone")
+  case object Organization extends HookEvent("organization")
+  case object OrgBlock extends HookEvent("org_block")
+  case object PageBuild extends HookEvent("page_build")
+  case object ProjectCard extends HookEvent("project_card")
+  case object ProjectColumn extends HookEvent("project_column")
+  case object Project extends HookEvent("project")
+  case object Public extends HookEvent("public")
+  case object PullRequest extends HookEvent("pull_request")
+  case object PullRequestReview extends HookEvent("pull_request_review")
+  case object PullRequestReviewComment extends HookEvent("pull_request_review_comment")
+  case object Push extends HookEvent("push")
+  case object Release extends HookEvent("release")
+  case object Repository extends HookEvent("repository")
+  case object RepositoryImport extends HookEvent("repository_import")
+  case object RepositoryVulnerabilityAlert extends HookEvent("repository_vulnerability_alert")
+  case object Status extends HookEvent("status")
+  case object Team extends HookEvent("team")
+  case object TeamAdd extends HookEvent("team_add")
+  case object Watch extends HookEvent("watch")
 
-  val all: Set[WebHookEvent] = Set(
+  val all: Set[HookEvent] = Set(
     CheckRun,
     CheckSuite,
     CommitComment,
@@ -183,13 +183,13 @@ object WebHookEvent {
     Watch
   )
 
-  def apply(name: String): WebHookEvent =
+  def apply(name: String): HookEvent =
     all
       .find(_.value == name)
       .getOrElse {
         throw new IllegalArgumentException(s"'$name' unknown event name")
       }
 
-  def apply(names: String*): Set[WebHookEvent] =
-    names.toSet map WebHookEvent.apply
+  def apply(names: String*): Set[HookEvent] =
+    names.toSet map HookEvent.apply
 }

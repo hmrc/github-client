@@ -29,22 +29,21 @@ trait HooksApi {
 
   protected val repositoryService: RepositoryService
 
-  def findHooks(orgName: OrganisationName, repoName: RepositoryName)(
-    implicit ec: ExecutionContext): Future[Set[WebHook]] =
+  def findHooks(orgName: OrganisationName, repoName: RepositoryName)(implicit ec: ExecutionContext): Future[Set[Hook]] =
     Future {
       repositoryService
         .getHooks(IdProvider(orgName, repoName))
         .asScala
         .map { repositoryHook =>
-          WebHook(
-            WebHookId(repositoryHook.getId),
+          Hook(
+            HookId(repositoryHook.getId),
             Url(repositoryHook.getUrl),
-            WebHookName(repositoryHook.getName),
+            HookName(repositoryHook.getName),
             repositoryHook.isActive,
             HookConfig(
               Url(repositoryHook.getConfig.get("url")),
-              repositoryHook.getConfig.asScala.get("content_type") map ContentType.apply,
-              repositoryHook.getConfig.asScala.get("secret") map Secret.apply
+              repositoryHook.getConfig.asScala.get("content_type") map HookContentType.apply,
+              repositoryHook.getConfig.asScala.get("secret") map HookSecret.apply
             )
           )
         }
@@ -55,8 +54,8 @@ trait HooksApi {
     orgName: OrganisationName,
     repoName: RepositoryName,
     config: HookConfig,
-    events: Set[WebHookEvent] = Set.empty,
-    active: Boolean           = true)(implicit ec: ExecutionContext): Future[RepositoryHook] =
+    events: Set[HookEvent] = Set.empty,
+    active: Boolean        = true)(implicit ec: ExecutionContext): Future[RepositoryHook] =
     Future {
       repositoryService.createHook(
         IdProvider(orgName, repoName),
@@ -64,7 +63,7 @@ trait HooksApi {
       )
     }.checkForApiRateLimitError
 
-  def deleteHook(orgName: OrganisationName, repoName: RepositoryName, hookId: WebHookId)(
+  def deleteHook(orgName: OrganisationName, repoName: RepositoryName, hookId: HookId)(
     implicit ec: ExecutionContext): Future[Unit] =
     Future {
       repositoryService.deleteHook(
@@ -80,9 +79,9 @@ object HooksApi {
 
   private[githubclient] object NewWebHook {
 
-    def apply(config: HookConfig, active: Boolean, events: Set[WebHookEvent] = Set.empty): RepositoryHook =
+    def apply(config: HookConfig, active: Boolean, events: Set[HookEvent] = Set.empty): RepositoryHook =
       NewWebHook(events.map(_.toString).toArray)
-        .setName(WebHookName.Web.value)
+        .setName(HookName.Web.value)
         .setConfig(config.toMap)
         .setActive(active)
 
