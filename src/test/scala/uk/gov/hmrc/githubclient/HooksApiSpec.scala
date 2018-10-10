@@ -17,14 +17,14 @@
 package uk.gov.hmrc.githubclient
 
 import com.google.gson.Gson
-import org.eclipse.egit.github.core.service.{OrganizationService, RepositoryService}
+import org.eclipse.egit.github.core.service.RepositoryService
 import org.eclipse.egit.github.core.{IRepositoryIdProvider, RepositoryHook}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import org.scalatest.concurrent.ScalaFutures
 import play.api.libs.json.{JsValue, Json}
-import uk.gov.hmrc.githubclient.GithubApiClient.NewWebHook
+import uk.gov.hmrc.githubclient.HooksApi.NewWebHook
 import uk.gov.hmrc.githubclient.WebHookName.OtherWebHookName
 
 import scala.collection.JavaConverters._
@@ -33,9 +33,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class HookFunctionsSpec extends WordSpec with MockFactory with ScalaFutures {
+class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
 
-  "GitHubAPIClient.createHook" should {
+  "createHook" should {
 
     "add the given hook to the repository" in new Setup {
       val receivedHook = new RepositoryHook()
@@ -55,7 +55,7 @@ class HookFunctionsSpec extends WordSpec with MockFactory with ScalaFutures {
         )
         .returning(receivedHook)
 
-      githubClient
+      hooksApi
         .createHook(organisation, repoName, config, events, active = false)
         .futureValue shouldBe receivedHook
     }
@@ -68,12 +68,12 @@ class HookFunctionsSpec extends WordSpec with MockFactory with ScalaFutures {
         .throwing(runtimeException)
 
       intercept[APIRateLimitExceededException] {
-        Await.result(githubClient.createHook(organisation, repoName, config), 1 second)
+        Await.result(hooksApi.createHook(organisation, repoName, config), 1 second)
       } shouldBe APIRateLimitExceededException(runtimeException)
     }
   }
 
-  "GitHubAPIClient.findHooks" should {
+  "findHooks" should {
 
     "return all repository's hooks" in new Setup {
       val receivedHook = new RepositoryHook()
@@ -102,7 +102,7 @@ class HookFunctionsSpec extends WordSpec with MockFactory with ScalaFutures {
           ).asJava
         )
 
-      githubClient
+      hooksApi
         .findHooks(organisation, repoName)
         .futureValue shouldBe Set(
         WebHook(
@@ -130,7 +130,40 @@ class HookFunctionsSpec extends WordSpec with MockFactory with ScalaFutures {
         .throwing(runtimeException)
 
       intercept[APIRateLimitExceededException] {
-        Await.result(githubClient.findHooks(organisation, repoName), 1 second)
+        Await.result(hooksApi.findHooks(organisation, repoName), 1 second)
+      } shouldBe APIRateLimitExceededException(runtimeException)
+    }
+  }
+
+  "deleteHook" should {
+
+    val hookId = WebHookId(1)
+
+    "delete repository hook and return nothing" in new Setup {
+
+      (repositoryServiceMock
+        .deleteHook(_: IRepositoryIdProvider, _: Int))
+        .expects(
+          argAssert { provider: IRepositoryIdProvider =>
+            provider.generateId() shouldBe s"$organisation/$repoName"
+          },
+          hookId.value.toInt
+        )
+
+      hooksApi
+        .deleteHook(organisation, repoName, hookId)
+        .futureValue shouldBe ()
+    }
+
+    "handle API rate limit error" in new Setup {
+
+      val runtimeException = new RuntimeException("api rate limit exceeded")
+      (repositoryServiceMock.deleteHook _)
+        .expects(*, *)
+        .throwing(runtimeException)
+
+      intercept[APIRateLimitExceededException] {
+        Await.result(hooksApi.deleteHook(organisation, repoName, hookId), 1 second)
       } shouldBe APIRateLimitExceededException(runtimeException)
     }
   }
@@ -178,17 +211,10 @@ class HookFunctionsSpec extends WordSpec with MockFactory with ScalaFutures {
     val events       = Set("push")
     val config       = HookConfig(Url("jenkins_hook_url"))
 
-    val extendedGithubClientMock: ExtendedGitHubClient = mock[ExtendedGitHubClient]
-    val organizationServiceMock: OrganizationService   = mock[OrganizationService]
-    val repositoryServiceMock: RepositoryService       = mock[RepositoryService]
+    val repositoryServiceMock: RepositoryService = mock[RepositoryService]
 
-    def githubClient: GithubApiClient = new GithubApiClient {
-      val orgService: OrganizationService          = organizationServiceMock
-      val teamService: ExtendedTeamService         = new ExtendedTeamService(extendedGithubClientMock)
-      val repositoryService: RepositoryService     = repositoryServiceMock
-      val contentsService: ExtendedContentsService = new ExtendedContentsService(extendedGithubClientMock)
-      val releaseService: ReleaseService           = new ReleaseService(extendedGithubClientMock)
-      val metrics: GithubClientMetrics             = DefaultGithubClientMetrics
+    def hooksApi: HooksApi = new HooksApi {
+      override protected val repositoryService: RepositoryService = repositoryServiceMock
     }
   }
 }

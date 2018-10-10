@@ -21,22 +21,21 @@ import java.util.Base64
 import com.google.common.io.BaseEncoding
 import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service._
-import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, RepositoryContents, RepositoryHook}
+import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, RepositoryContents}
 
-import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
-trait GithubApiClient {
+trait GithubApiClient extends HooksApi {
 
-  import GithubApiClient._
+  import RateLimit._
 
   import scala.collection.JavaConversions._
 
-  val orgService: OrganizationService
-  val teamService: ExtendedTeamService
-  val repositoryService: RepositoryService
-  val contentsService: ExtendedContentsService
-  val releaseService: ReleaseService
+  protected val orgService: OrganizationService
+  protected val teamService: ExtendedTeamService
+  protected val repositoryService: RepositoryService
+  protected val contentsService: ExtendedContentsService
+  protected val releaseService: ReleaseService
 
   def getOrganisations(implicit ec: ExecutionContext): Future[List[GhOrganisation]] =
     Future {
@@ -150,41 +149,6 @@ trait GithubApiClient {
       teamService.addRepository(teamId, repositoryId(repoName, orgName))
     }.checkForApiRateLimitError
 
-  def findHooks(orgName: OrganisationName, repoName: RepositoryName)(
-    implicit ec: ExecutionContext): Future[Set[WebHook]] =
-    Future {
-      repositoryService
-        .getHooks(IdProvider(orgName, repoName))
-        .asScala
-        .map { repositoryHook =>
-          WebHook(
-            WebHookId(repositoryHook.getId),
-            Url(repositoryHook.getUrl),
-            WebHookName(repositoryHook.getName),
-            repositoryHook.isActive,
-            HookConfig(
-              Url(repositoryHook.getConfig.get("url")),
-              repositoryHook.getConfig.asScala.get("content_type") map ContentType.apply,
-              repositoryHook.getConfig.asScala.get("secret") map Secret.apply
-            )
-          )
-        }
-        .toSet
-    }.checkForApiRateLimitError
-
-  def createHook(
-    orgName: OrganisationName,
-    repoName: RepositoryName,
-    config: HookConfig,
-    events: Set[String] = Set.empty,
-    active: Boolean     = true)(implicit ec: ExecutionContext): Future[RepositoryHook] =
-    Future {
-      repositoryService.createHook(
-        IdProvider(orgName, repoName),
-        NewWebHook(config, active, events)
-      )
-    }.checkForApiRateLimitError
-
   def createFile(orgName: String, repoName: String, pathAndFileName: String, contents: String, message: String)(
     implicit ec: ExecutionContext): Future[Unit] =
     if (message.isEmpty)
@@ -214,45 +178,4 @@ object GithubApiClient {
       val releaseService: ReleaseService           = new ReleaseService(client)
     }
   }
-
-  private def isRateLimit(e: Throwable): Boolean = e.getMessage.toLowerCase.contains("api rate limit exceeded")
-
-  implicit class RateLimit[T](theFuture: Future[T]) {
-    def checkForApiRateLimitError(implicit executionContext: ExecutionContext): Future[T] = theFuture recoverWith {
-      case e if isRateLimit(e) => rateLimitError(e)
-    }
-  }
-
-  private def rateLimitError(e: Throwable) = {
-    Log.error("=== API rate limit has been reached ===", e)
-    throw APIRateLimitExceededException(e)
-  }
-
-  private[githubclient] case class NewWebHook(events: Array[String]) extends RepositoryHook
-
-  private[githubclient] object NewWebHook {
-
-    def apply(config: HookConfig, active: Boolean, events: Set[String] = Set.empty): RepositoryHook =
-      NewWebHook(events.toArray)
-        .setName(WebHookName.Web.value)
-        .setConfig(config.toMap)
-        .setActive(active)
-
-    private implicit class HookConfigOps(hookConfig: HookConfig) {
-      def toMap: java.util.Map[String, String] =
-        Seq(
-          Option("url" -> hookConfig.url.toString),
-          hookConfig.contentType.map(ct => "content_type" -> ct.toString),
-          hookConfig.secret.map(s => "secret"             -> s.toString)
-        ).flatten.toMap.asJava
-    }
-  }
 }
-
-private object IdProvider {
-  def apply(orgName: OrganisationName, repoName: RepositoryName): IRepositoryIdProvider = new IRepositoryIdProvider {
-    val generateId: String = s"$orgName/$repoName"
-  }
-}
-
-case class APIRateLimitExceededException(exception: Throwable) extends RuntimeException(exception)
