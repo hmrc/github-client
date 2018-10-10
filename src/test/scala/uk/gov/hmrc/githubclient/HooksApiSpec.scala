@@ -25,6 +25,7 @@ import org.scalatest.WordSpec
 import org.scalatest.concurrent.ScalaFutures
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.githubclient.HooksApi.NewWebHook
+import uk.gov.hmrc.githubclient.WebHookEvent.{PullRequest, Push}
 import uk.gov.hmrc.githubclient.WebHookName.OtherWebHookName
 
 import scala.collection.JavaConverters._
@@ -50,7 +51,7 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
             hook.getConfig.asScala("url") shouldBe "jenkins_hook_url"
             hook.getName                  shouldBe "web"
             hook.isActive                 shouldBe false
-            hook.events                   should contain only "push"
+            hook.events                   should contain only (Push.toString, PullRequest.toString)
           }
         )
         .returning(receivedHook)
@@ -180,7 +181,7 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
       val json: JsValue = Json.parse(new Gson().toJson(NewWebHook(hookConfig, active = true, events)))
 
       (json \ "name").as[String]                    shouldBe "web"
-      (json \ "events").as[Seq[String]].toSet       shouldBe events
+      (json \ "events").as[Seq[String]].toSet       shouldBe events.map(_.toString)
       (json \ "active").as[Boolean]                 shouldBe true
       (json \ "config" \ "url").as[String]          shouldBe "jenkins_hook_url"
       (json \ "config" \ "content_type").as[String] shouldBe ContentType.Form.toString
@@ -197,7 +198,7 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
       val json: JsValue = Json.parse(new Gson().toJson(NewWebHook(hookConfig, active = true, events)))
 
       (json \ "name").as[String]                       shouldBe "web"
-      (json \ "events").as[Seq[String]].toSet          shouldBe events
+      (json \ "events").as[Seq[String]].toSet          shouldBe events.map(_.toString)
       (json \ "active").as[Boolean]                    shouldBe true
       (json \ "config" \ "url").as[String]             shouldBe "jenkins_hook_url"
       (json \ "config" \ "content_type").asOpt[String] shouldBe None
@@ -206,10 +207,10 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
   }
 
   private trait Setup {
-    val organisation = OrganisationName("HMRC")
-    val repoName     = RepositoryName("test-repo")
-    val events       = Set("push")
-    val config       = HookConfig(Url("jenkins_hook_url"))
+    val organisation              = OrganisationName("HMRC")
+    val repoName                  = RepositoryName("test-repo")
+    val events: Set[WebHookEvent] = Set(Push, PullRequest)
+    val config                    = HookConfig(Url("jenkins_hook_url"))
 
     val repositoryServiceMock: RepositoryService = mock[RepositoryService]
 

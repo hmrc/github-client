@@ -55,8 +55,8 @@ trait HooksApi {
     orgName: OrganisationName,
     repoName: RepositoryName,
     config: HookConfig,
-    events: Set[String] = Set.empty,
-    active: Boolean     = true)(implicit ec: ExecutionContext): Future[RepositoryHook] =
+    events: Set[WebHookEvent] = Set.empty,
+    active: Boolean           = true)(implicit ec: ExecutionContext): Future[RepositoryHook] =
     Future {
       repositoryService.createHook(
         IdProvider(orgName, repoName),
@@ -80,8 +80,8 @@ object HooksApi {
 
   private[githubclient] object NewWebHook {
 
-    def apply(config: HookConfig, active: Boolean, events: Set[String] = Set.empty): RepositoryHook =
-      NewWebHook(events.toArray)
+    def apply(config: HookConfig, active: Boolean, events: Set[WebHookEvent] = Set.empty): RepositoryHook =
+      NewWebHook(events.map(_.toString).toArray)
         .setName(WebHookName.Web.value)
         .setConfig(config.toMap)
         .setActive(active)

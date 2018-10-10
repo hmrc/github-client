@@ -93,3 +93,103 @@ object WebHookName {
     case other     => OtherWebHookName(other)
   }
 }
+
+sealed abstract class WebHookEvent(val value: String) {
+  override def toString: String = value
+}
+
+object WebHookEvent {
+  case object CheckRun extends WebHookEvent("check_run")
+  case object CheckSuite extends WebHookEvent("check_suite")
+  case object CommitComment extends WebHookEvent("commit_comment")
+  case object Create extends WebHookEvent("create")
+  case object Delete extends WebHookEvent("delete")
+  case object Deployment extends WebHookEvent("deployment")
+  case object DeploymentStatus extends WebHookEvent("deployment_status")
+  case object Download extends WebHookEvent("download")
+  case object Follow extends WebHookEvent("follow")
+  case object Fork extends WebHookEvent("fork")
+  case object ForkApply extends WebHookEvent("fork_apply")
+  case object GithubAppAuthorization extends WebHookEvent("github_app_authorization")
+  case object Gist extends WebHookEvent("gist")
+  case object Gollum extends WebHookEvent("gollum")
+  case object Installation extends WebHookEvent("installation")
+  case object InstallationRepositories extends WebHookEvent("installation_repositories")
+  case object IssueComment extends WebHookEvent("issue_comment")
+  case object Issues extends WebHookEvent("issues")
+  case object Label extends WebHookEvent("label")
+  case object MarketplacePurchase extends WebHookEvent("marketplace_purchase")
+  case object Member extends WebHookEvent("member")
+  case object Membership extends WebHookEvent("membership")
+  case object Milestone extends WebHookEvent("milestone")
+  case object Organization extends WebHookEvent("organization")
+  case object OrgBlock extends WebHookEvent("org_block")
+  case object PageBuild extends WebHookEvent("page_build")
+  case object ProjectCard extends WebHookEvent("project_card")
+  case object ProjectColumn extends WebHookEvent("project_column")
+  case object Project extends WebHookEvent("project")
+  case object Public extends WebHookEvent("public")
+  case object PullRequest extends WebHookEvent("pull_request")
+  case object PullRequestReview extends WebHookEvent("pull_request_review")
+  case object PullRequestReviewComment extends WebHookEvent("pull_request_review_comment")
+  case object Push extends WebHookEvent("push")
+  case object Release extends WebHookEvent("release")
+  case object Repository extends WebHookEvent("repository")
+  case object RepositoryImport extends WebHookEvent("repository_import")
+  case object RepositoryVulnerabilityAlert extends WebHookEvent("repository_vulnerability_alert")
+  case object Status extends WebHookEvent("status")
+  case object Team extends WebHookEvent("team")
+  case object TeamAdd extends WebHookEvent("team_add")
+  case object Watch extends WebHookEvent("watch")
+
+  val all: Set[WebHookEvent] = Set(
+    CheckRun,
+    CheckSuite,
+    CommitComment,
+    Create,
+    Delete,
+    Deployment,
+    DeploymentStatus,
+    Fork,
+    GithubAppAuthorization,
+    Gollum,
+    Installation,
+    InstallationRepositories,
+    IssueComment,
+    Issues,
+    Label,
+    MarketplacePurchase,
+    Member,
+    Membership,
+    Milestone,
+    Organization,
+    OrgBlock,
+    PageBuild,
+    ProjectCard,
+    ProjectColumn,
+    Project,
+    Public,
+    PullRequest,
+    PullRequestReview,
+    PullRequestReviewComment,
+    Push,
+    Release,
+    Repository,
+    RepositoryImport,
+    RepositoryVulnerabilityAlert,
+    Status,
+    Team,
+    TeamAdd,
+    Watch
+  )
+
+  def apply(name: String): WebHookEvent =
+    all
+      .find(_.value == name)
+      .getOrElse {
+        throw new IllegalArgumentException(s"'$name' unknown event name")
+      }
+
+  def apply(names: String*): Set[WebHookEvent] =
+    names.toSet map WebHookEvent.apply
+}
