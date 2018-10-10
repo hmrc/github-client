@@ -52,13 +52,44 @@ case class Url(value: String) extends AnyVal {
   override def toString: String = value
 }
 
-sealed abstract class ContentType(val value: String)
+sealed abstract class ContentType(val value: String) {
+  override def toString: String = value
+}
 
 object ContentType {
   case object Form extends ContentType("form")
   case object Json extends ContentType("json")
+
+  def apply(value: String): ContentType = value match {
+    case Form.value => ContentType.Form
+    case Json.value => ContentType.Json
+    case other      => throw new IllegalArgumentException(s"'$other' is not a valid ContentType")
+  }
 }
 
 case class Secret(value: String) extends AnyVal {
   override def toString: String = value
+}
+
+case class WebHook(id: WebHookId, url: Url, name: WebHookName, active: Boolean, config: HookConfig)
+
+case class WebHookId(value: Long) extends AnyVal {
+  override def toString: String = value.toString
+}
+
+sealed trait WebHookName {
+  val value: String
+  override def toString: String = value
+}
+
+object WebHookName {
+  case object Web extends WebHookName {
+    override val value: String = "web"
+  }
+  case class OtherWebHookName(value: String) extends WebHookName
+
+  def apply(value: String): WebHookName = value match {
+    case Web.value => Web
+    case other     => OtherWebHookName(other)
+  }
 }

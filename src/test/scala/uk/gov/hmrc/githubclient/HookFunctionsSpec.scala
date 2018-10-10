@@ -24,7 +24,8 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import org.scalatest.concurrent.ScalaFutures
 import play.api.libs.json.{JsValue, Json}
-import uk.gov.hmrc.githubclient.GithubApiClient.WebHook
+import uk.gov.hmrc.githubclient.GithubApiClient.NewWebHook
+import uk.gov.hmrc.githubclient.WebHookName.OtherWebHookName
 
 import scala.collection.JavaConverters._
 import scala.concurrent.Await
@@ -45,7 +46,7 @@ class HookFunctionsSpec extends WordSpec with MockFactory with ScalaFutures {
           argAssert { provider: IRepositoryIdProvider =>
             provider.generateId() shouldBe s"$organisation/$repoName"
           },
-          argAssert { hook: WebHook =>
+          argAssert { hook: NewWebHook =>
             hook.getConfig.asScala("url") shouldBe "jenkins_hook_url"
             hook.getName                  shouldBe "web"
             hook.isActive                 shouldBe false
@@ -70,42 +71,104 @@ class HookFunctionsSpec extends WordSpec with MockFactory with ScalaFutures {
         Await.result(githubClient.createHook(organisation, repoName, config), 1 second)
       } shouldBe APIRateLimitExceededException(runtimeException)
     }
+  }
 
-    "WebHook" should {
+  "GitHubAPIClient.findHooks" should {
 
-      "get serialized with all the fields" in new Setup {
-        val hookConfig = HookConfig(
-          Url("jenkins_hook_url"),
-          Some(ContentType.Form),
-          Some(Secret("some_secret"))
+    "return all repository's hooks" in new Setup {
+      val receivedHook = new RepositoryHook()
+
+      (repositoryServiceMock
+        .getHooks(_: IRepositoryIdProvider))
+        .expects(
+          argAssert { provider: IRepositoryIdProvider =>
+            provider.generateId() shouldBe s"$organisation/$repoName"
+          }
+        )
+        .returning(
+          Seq(
+            new RepositoryHook()
+              .setId(1)
+              .setName("web")
+              .setActive(true)
+              .setUrl("http://github/hook/url/1")
+              .setConfig(Map("url" -> "http://webhook.url/1", "content_type" -> "form").asJava),
+            new RepositoryHook()
+              .setId(2)
+              .setName("non-web")
+              .setActive(false)
+              .setUrl("http://github/hook/url/2")
+              .setConfig(Map("url" -> "http://webhook.url/2", "content_type" -> "json").asJava)
+          ).asJava
         )
 
-        val json: JsValue = Json.parse(new Gson().toJson(WebHook(hookConfig, active = true, events)))
-
-        (json \ "name").as[String]                    shouldBe "web"
-        (json \ "events").as[Seq[String]].toSet       shouldBe events
-        (json \ "active").as[Boolean]                 shouldBe true
-        (json \ "config" \ "url").as[String]          shouldBe "jenkins_hook_url"
-        (json \ "config" \ "content_type").as[String] shouldBe ContentType.Form.toString
-        (json \ "config" \ "secret").as[String]       shouldBe "some_secret"
-      }
-
-      "get serialized when hook config have Nones where possible" in new Setup {
-        val hookConfig = HookConfig(
-          Url("jenkins_hook_url"),
-          contentType = None,
-          secret      = None
+      githubClient
+        .findHooks(organisation, repoName)
+        .futureValue shouldBe Set(
+        WebHook(
+          WebHookId(1),
+          Url("http://github/hook/url/1"),
+          WebHookName.Web,
+          active = true,
+          HookConfig(Url("http://webhook.url/1"), Some(ContentType.Form))
+        ),
+        WebHook(
+          WebHookId(2),
+          Url("http://github/hook/url/2"),
+          OtherWebHookName("non-web"),
+          active = false,
+          HookConfig(Url("http://webhook.url/2"), Some(ContentType.Json))
         )
+      )
+    }
 
-        val json: JsValue = Json.parse(new Gson().toJson(WebHook(hookConfig, active = true, events)))
+    "handle API rate limit error" in new Setup {
 
-        (json \ "name").as[String]                       shouldBe "web"
-        (json \ "events").as[Seq[String]].toSet          shouldBe events
-        (json \ "active").as[Boolean]                    shouldBe true
-        (json \ "config" \ "url").as[String]             shouldBe "jenkins_hook_url"
-        (json \ "config" \ "content_type").asOpt[String] shouldBe None
-        (json \ "config" \ "secret").asOpt[String]       shouldBe None
-      }
+      val runtimeException = new RuntimeException("api rate limit exceeded")
+      (repositoryServiceMock.getHooks _)
+        .expects(*)
+        .throwing(runtimeException)
+
+      intercept[APIRateLimitExceededException] {
+        Await.result(githubClient.findHooks(organisation, repoName), 1 second)
+      } shouldBe APIRateLimitExceededException(runtimeException)
+    }
+  }
+
+  "WebHook" should {
+
+    "get serialized with all the fields" in new Setup {
+      val hookConfig = HookConfig(
+        Url("jenkins_hook_url"),
+        Some(ContentType.Form),
+        Some(Secret("some_secret"))
+      )
+
+      val json: JsValue = Json.parse(new Gson().toJson(NewWebHook(hookConfig, active = true, events)))
+
+      (json \ "name").as[String]                    shouldBe "web"
+      (json \ "events").as[Seq[String]].toSet       shouldBe events
+      (json \ "active").as[Boolean]                 shouldBe true
+      (json \ "config" \ "url").as[String]          shouldBe "jenkins_hook_url"
+      (json \ "config" \ "content_type").as[String] shouldBe ContentType.Form.toString
+      (json \ "config" \ "secret").as[String]       shouldBe "some_secret"
+    }
+
+    "get serialized when hook config have Nones where possible" in new Setup {
+      val hookConfig = HookConfig(
+        Url("jenkins_hook_url"),
+        contentType = None,
+        secret      = None
+      )
+
+      val json: JsValue = Json.parse(new Gson().toJson(NewWebHook(hookConfig, active = true, events)))
+
+      (json \ "name").as[String]                       shouldBe "web"
+      (json \ "events").as[Seq[String]].toSet          shouldBe events
+      (json \ "active").as[Boolean]                    shouldBe true
+      (json \ "config" \ "url").as[String]             shouldBe "jenkins_hook_url"
+      (json \ "config" \ "content_type").asOpt[String] shouldBe None
+      (json \ "config" \ "secret").asOpt[String]       shouldBe None
     }
   }
 

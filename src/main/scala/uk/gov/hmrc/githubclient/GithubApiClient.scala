@@ -150,6 +150,28 @@ trait GithubApiClient {
       teamService.addRepository(teamId, repositoryId(repoName, orgName))
     }.checkForApiRateLimitError
 
+  def findHooks(orgName: OrganisationName, repoName: RepositoryName)(
+    implicit ec: ExecutionContext): Future[Set[WebHook]] =
+    Future {
+      repositoryService
+        .getHooks(IdProvider(orgName, repoName))
+        .asScala
+        .map { repositoryHook =>
+          WebHook(
+            WebHookId(repositoryHook.getId),
+            Url(repositoryHook.getUrl),
+            WebHookName(repositoryHook.getName),
+            repositoryHook.isActive,
+            HookConfig(
+              Url(repositoryHook.getConfig.get("url")),
+              repositoryHook.getConfig.asScala.get("content_type") map ContentType.apply,
+              repositoryHook.getConfig.asScala.get("secret") map Secret.apply
+            )
+          )
+        }
+        .toSet
+    }.checkForApiRateLimitError
+
   def createHook(
     orgName: OrganisationName,
     repoName: RepositoryName,
@@ -159,7 +181,7 @@ trait GithubApiClient {
     Future {
       repositoryService.createHook(
         IdProvider(orgName, repoName),
-        WebHook(config, active, events)
+        NewWebHook(config, active, events)
       )
     }.checkForApiRateLimitError
 
@@ -206,13 +228,13 @@ object GithubApiClient {
     throw APIRateLimitExceededException(e)
   }
 
-  private[githubclient] case class WebHook(events: Array[String]) extends RepositoryHook
+  private[githubclient] case class NewWebHook(events: Array[String]) extends RepositoryHook
 
-  private[githubclient] object WebHook {
+  private[githubclient] object NewWebHook {
 
     def apply(config: HookConfig, active: Boolean, events: Set[String] = Set.empty): RepositoryHook =
-      WebHook(events.toArray)
-        .setName("web")
+      NewWebHook(events.toArray)
+        .setName(WebHookName.Web.value)
         .setConfig(config.toMap)
         .setActive(active)
 
