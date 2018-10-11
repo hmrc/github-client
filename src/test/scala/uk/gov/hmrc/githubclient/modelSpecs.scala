@@ -20,6 +20,60 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import org.scalatest.prop.TableDrivenPropertyChecks
 
+class OrganisationNameSpec extends WordSpec {
+
+  "OrganisationName" should {
+    "be a NonEmptyString" in {
+      OrganisationName("a") shouldBe a[NonEmptyString]
+    }
+  }
+}
+
+class RepositoryNameSpec extends WordSpec {
+
+  "RepositoryName" should {
+    "be a NonEmptyString" in {
+      RepositoryName("a") shouldBe a[NonEmptyString]
+    }
+  }
+}
+
+class UrlSpec extends WordSpec {
+
+  "Url" should {
+    "be a NonEmptyString" in {
+      Url("a") shouldBe a[NonEmptyString]
+    }
+  }
+}
+
+class HookSecretSpec extends WordSpec {
+
+  "HookSecret" should {
+    "be a NonEmptyString" in {
+      HookSecret("a") shouldBe a[NonEmptyString]
+    }
+  }
+}
+
+class NonEmptyStringSpec extends WordSpec {
+
+  "NonEmptyString" should {
+
+    "not throw exception when instantiated with a non-empty String" in {
+      an[IllegalArgumentException] should be thrownBy new NonEmptyString {
+        override def value: String = "  "
+      }
+    }
+
+    "throw exception when instantiated with an empty String" in {
+      an[IllegalArgumentException] should be thrownBy new NonEmptyString {
+        override def value: String = "  "
+      }
+    }
+  }
+}
+
 class HookContentTypeSpec extends WordSpec {
 
   "ContentType.apply" should {
@@ -43,6 +97,9 @@ class HookNameSpec extends WordSpec {
     }
     "return NonWebHookName if value is different than 'web'" in {
       HookName("abc") shouldBe HookName.NonWebHookName("abc")
+    }
+    "return NonWebHookName which is a NonEmptyString" in {
+      HookName("abc") shouldBe a[NonEmptyString]
     }
   }
 }

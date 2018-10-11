@@ -38,17 +38,17 @@ case class GhRepoRelease(id: Long, tagName: String, createdAt: Date)
 
 case class GhRepoTag(name: String)
 
-case class OrganisationName(value: String) extends AnyVal {
+case class OrganisationName(value: String) extends NonEmptyString {
   override def toString: String = value
 }
 
-case class RepositoryName(value: String) extends AnyVal {
+case class RepositoryName(value: String) extends NonEmptyString {
   override def toString: String = value
 }
 
 case class HookConfig(url: Url, contentType: Option[HookContentType] = None, secret: Option[HookSecret] = None)
 
-case class Url(value: String) extends AnyVal {
+case class Url(value: String) extends NonEmptyString {
   override def toString: String = value
 }
 
@@ -67,7 +67,7 @@ object HookContentType {
   }
 }
 
-case class HookSecret(value: String) extends AnyVal {
+case class HookSecret(value: String) extends NonEmptyString {
   override def toString: String = value
 }
 
@@ -86,7 +86,7 @@ object HookName {
   case object Web extends HookName {
     override val value: String = "web"
   }
-  case class NonWebHookName(value: String) extends HookName
+  case class NonWebHookName(value: String) extends HookName with NonEmptyString
 
   def apply(value: String): HookName = value match {
     case Web.value => Web
@@ -192,4 +192,9 @@ object HookEvent {
 
   def apply(names: String*): Set[HookEvent] =
     names.toSet map HookEvent.apply
+}
+
+trait NonEmptyString {
+  def value: String
+  require(value.trim.nonEmpty, s"${getClass.getSimpleName} cannot be empty")
 }
