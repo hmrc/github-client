@@ -34,34 +34,34 @@ trait HooksApi {
       repositoryService
         .getHooks(IdProvider(orgName, repoName))
         .asScala
-        .map { repositoryHook =>
-          Hook(
-            HookId(repositoryHook.getId),
-            Url(repositoryHook.getUrl),
-            HookName(repositoryHook.getName),
-            repositoryHook.isActive,
-            HookConfig(
-              Url(repositoryHook.getConfig.get("url")),
-              repositoryHook.getConfig.asScala.get("content_type") map HookContentType.apply,
-              repositoryHook.getConfig.asScala.get("secret") map HookSecret.apply
-            )
-          )
-        }
+        .map(repositoryHookToHook)
         .toSet
     }.checkForApiRateLimitError
+
+  private def repositoryHookToHook(repositoryHook: RepositoryHook): Hook = Hook(
+    HookId(repositoryHook.getId),
+    Url(repositoryHook.getUrl),
+    HookName(repositoryHook.getName),
+    repositoryHook.isActive,
+    HookConfig(
+      Url(repositoryHook.getConfig.get("url")),
+      repositoryHook.getConfig.asScala.get("content_type") map HookContentType.apply,
+      repositoryHook.getConfig.asScala.get("secret") map HookSecret.apply
+    )
+  )
 
   def createWebHook(
     orgName: OrganisationName,
     repoName: RepositoryName,
     config: HookConfig,
     events: Set[HookEvent] = Set.empty,
-    active: Boolean        = true)(implicit ec: ExecutionContext): Future[RepositoryHook] =
+    active: Boolean        = true)(implicit ec: ExecutionContext): Future[Hook] =
     Future {
       repositoryService.createHook(
         IdProvider(orgName, repoName),
         NewWebHook(config, active, events)
       )
-    }.checkForApiRateLimitError
+    }.map(repositoryHookToHook).checkForApiRateLimitError
 
   def deleteHook(orgName: OrganisationName, repoName: RepositoryName, hookId: HookId)(
     implicit ec: ExecutionContext): Future[Unit] =

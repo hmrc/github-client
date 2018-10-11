@@ -39,7 +39,12 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
   "createWebHook" should {
 
     "add the given hook to the repository" in new Setup {
-      val receivedHook = new RepositoryHook()
+      val receivedHook: RepositoryHook = new RepositoryHook()
+        .setId(1)
+        .setName("web")
+        .setActive(true)
+        .setUrl("http://github/hook/url/1")
+        .setConfig(Map("url" -> "http://webhook.url/1", "content_type" -> "form").asJava)
 
       (repositoryServiceMock
         .createHook(_: IRepositoryIdProvider, _: RepositoryHook))
@@ -58,7 +63,16 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
 
       hooksApi
         .createWebHook(organisation, repoName, config, events, active = false)
-        .futureValue shouldBe receivedHook
+        .futureValue shouldBe Hook(
+        HookId(receivedHook.getId),
+        Url(receivedHook.getUrl),
+        HookName.Web,
+        receivedHook.isActive,
+        HookConfig(
+          Url(receivedHook.getConfig.get("url")),
+          Some(HookContentType(receivedHook.getConfig.get("content_type")))
+        )
+      )
     }
 
     "handle API rate limit error" in new Setup {
