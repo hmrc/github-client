@@ -50,7 +50,7 @@ trait HooksApi {
         .toSet
     }.checkForApiRateLimitError
 
-  def createHook(
+  def createWebHook(
     orgName: OrganisationName,
     repoName: RepositoryName,
     config: HookConfig,

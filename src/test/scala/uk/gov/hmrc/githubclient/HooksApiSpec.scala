@@ -36,7 +36,7 @@ import scala.language.postfixOps
 
 class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
 
-  "createHook" should {
+  "createWebHook" should {
 
     "add the given hook to the repository" in new Setup {
       val receivedHook = new RepositoryHook()
@@ -57,7 +57,7 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
         .returning(receivedHook)
 
       hooksApi
-        .createHook(organisation, repoName, config, events, active = false)
+        .createWebHook(organisation, repoName, config, events, active = false)
         .futureValue shouldBe receivedHook
     }
 
@@ -69,7 +69,7 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
         .throwing(runtimeException)
 
       intercept[APIRateLimitExceededException] {
-        Await.result(hooksApi.createHook(organisation, repoName, config), 1 second)
+        Await.result(hooksApi.createWebHook(organisation, repoName, config), 1 second)
       } shouldBe APIRateLimitExceededException(runtimeException)
     }
   }
