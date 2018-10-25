@@ -39,15 +39,13 @@ trait GithubApiClient extends HooksApi {
 
   def getOrganisations(implicit ec: ExecutionContext): Future[List[GhOrganisation]] =
     Future {
-      orgService.getOrganizations.toList.map { go =>
-        GhOrganisation(go.getLogin, go.getId)
+      orgService.getOrganizations.toList.map { go => GhOrganisation(go.getLogin, go.getId)
       }
     }.checkForApiRateLimitError
 
   def getTeamsForOrganisation(org: String)(implicit ec: ExecutionContext): Future[List[GhTeam]] =
     Future {
-      teamService.getTeams(org).toList.map { gt =>
-        GhTeam(gt.getName, gt.getId)
+      teamService.getTeams(org).toList.map { gt => GhTeam(gt.getName, gt.getId)
       }
     }.checkForApiRateLimitError
 
@@ -66,6 +64,26 @@ trait GithubApiClient extends HooksApi {
           Option(gr.getLanguage).getOrElse("")
         )
       }
+    }.checkForApiRateLimitError
+
+  def getReposForOrg(org: String)(implicit ec: ExecutionContext): Future[List[GhRepository]] =
+    Future {
+      repositoryService
+        .getOrgRepositories(org)
+        .toList
+        .map { gr: Repository =>
+          GhRepository(
+            gr.getName,
+            Option(gr.getDescription).getOrElse(""),
+            gr.getId,
+            gr.getHtmlUrl,
+            gr.isFork,
+            gr.getCreatedAt.getTime,
+            gr.getPushedAt.getTime,
+            gr.isPrivate,
+            Option(gr.getLanguage).getOrElse("")
+          )
+        }
     }.checkForApiRateLimitError
 
   def getReleases(org: String, repoName: String)(implicit ec: ExecutionContext): Future[List[GhRepoRelease]] =
