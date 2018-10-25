@@ -465,6 +465,57 @@ class GithubApiClientSpec
     }
   }
 
+  "GitHubAPIClient.getReposForOrg" should {
+
+    val organisation = "HMRC"
+
+    "get all repos for org" in new Setup {
+
+      private val nowDate = new Date()
+      private val now     = nowDate.getTime
+
+      private val fiveDaysAgo     = LocalDate.now().minusDays(5).toEpochDay
+      private val fiveDaysAgoDate = new Date(fiveDaysAgo)
+
+      val repos: java.util.List[Repository] = List(
+        new Repository()
+          .setName("repoA")
+          .setDescription("some desc")
+          .setId(1)
+          .setHtmlUrl("http://some/html/url")
+          .setFork(true)
+          .setCreatedAt(fiveDaysAgoDate)
+          .setPushedAt(nowDate)
+          .setPrivate(true)
+          .setLanguage("Scala")
+      )
+
+      Mockito
+        .when(mockRepositoryService.getOrgRepositories(organisation))
+        .thenReturn(repos)
+
+      githubApiClient.getReposForOrg(organisation).futureValue shouldBe List(
+        GhRepository("repoA", "some desc", 1, "http://some/html/url", true, fiveDaysAgo, now, true, "Scala"))
+    }
+
+    "return empty list when no repos exists" in new Setup {
+      Mockito
+        .when(mockRepositoryService.getOrgRepositories(organisation))
+        .thenReturn(List())
+
+      githubApiClient.getReposForOrg(organisation).futureValue shouldBe List()
+    }
+
+    "handle API rate limit error" in new Setup {
+
+      Mockito.when(mockTeamService.getRepositories(1)).thenThrow(rateLimitException)
+
+      whenReady(githubApiClient.getReposForTeam(1).failed) { e =>
+        e shouldBe apiRateLimitExceeded
+      }
+    }
+  }
+
   // NB -> This is a workaround for a bug in Mockito whereby a test file can't contain more than one captor of the same type
   def buildAnswer2[A, B, R](function: (A, B) => R) = {
     val promise = Promise[R]()
