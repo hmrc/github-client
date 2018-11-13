@@ -148,6 +148,54 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
         Await.result(hooksApi.findHooks(organisation, repoName), 1 second)
       } shouldBe APIRateLimitExceededException(runtimeException)
     }
+
+    "ignore travis webhooks" in new Setup {
+
+      /*
+       * Existing integration with Travis was achieved by using Github Services which is now deprecated.
+       * Travis webhooks started to appear in the array of webhooks at some point but the content of each
+       * webhook is different (has different config) than all regular webhooks. We are filtering out travis
+       * webhooks.
+       */
+
+      val resultHook = new RepositoryHook()
+
+      (repositoryServiceMock
+        .getHooks(_: IRepositoryIdProvider))
+        .expects(
+          argAssert { provider: IRepositoryIdProvider =>
+            provider.generateId() shouldBe s"$organisation/$repoName"
+          }
+        )
+        .returning(
+          Seq(
+            new RepositoryHook()
+              .setId(1)
+              .setName("web")
+              .setActive(true)
+              .setUrl("http://github/hook/url/1")
+              .setConfig(Map("url" -> "http://webhook.url/1", "content_type" -> "form").asJava),
+            new RepositoryHook()
+              .setId(2)
+              .setName("travis")
+              .setActive(true)
+              .setUrl("http://github/hook/url/2")
+              .setConfig(Map("domain" -> "notify.travis-ci.org", "token" -> "*****").asJava)
+          ).asJava
+        )
+
+      hooksApi
+        .findHooks(organisation, repoName)
+        .futureValue shouldBe Set(
+        Hook(
+          HookId(1),
+          Url("http://github/hook/url/1"),
+          HookName.Web,
+          active = true,
+          HookConfig(Url("http://webhook.url/1"), Some(HookContentType.Form))
+        )
+      )
+    }
   }
 
   "deleteHook" should {
@@ -219,6 +267,7 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
       (json \ "config" \ "secret").asOpt[String]       shouldBe None
     }
   }
+
 
   private trait Setup {
     val organisation           = OrganisationName("HMRC")

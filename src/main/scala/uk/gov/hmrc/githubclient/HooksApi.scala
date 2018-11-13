@@ -34,6 +34,7 @@ trait HooksApi {
       repositoryService
         .getHooks(IdProvider(orgName, repoName))
         .asScala
+        .filterNot(_.getName == "travis")
         .map(repositoryHookToHook)
         .toSet
     }.checkForApiRateLimitError
