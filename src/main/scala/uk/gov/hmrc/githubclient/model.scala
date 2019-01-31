@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,6 +72,7 @@ case class HookSecret(value: String) extends NonEmptyString {
 }
 
 case class Hook(id: HookId, url: Url, name: HookName, active: Boolean, config: HookConfig)
+
 
 case class HookId(value: Long) extends AnyVal {
   override def toString: String = value.toString
