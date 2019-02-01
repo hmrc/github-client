@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,18 @@ trait HooksApi {
       )
     }.map(repositoryHookToHook).checkForApiRateLimitError
 
+  def editWebHook(
+    orgName: OrganisationName,
+    repoName: RepositoryName,
+    hook: Hook,
+    events: Set[HookEvent] = Set.empty)(implicit ec: ExecutionContext): Future[Hook] =
+    Future {
+      repositoryService.editHook(
+        IdProvider(orgName, repoName),
+        EditWebHook(hook.id, hook.config, hook.active, events)
+      )
+    }.map(repositoryHookToHook).checkForApiRateLimitError
+
   def deleteHook(orgName: OrganisationName, repoName: RepositoryName, hookId: HookId)(
     implicit ec: ExecutionContext): Future[Unit] =
     Future {
@@ -74,7 +86,17 @@ trait HooksApi {
     }.checkForApiRateLimitError
 }
 
+
 object HooksApi {
+
+  private implicit class HookConfigOps(hookConfig: HookConfig) {
+    def toMap: java.util.Map[String, String] =
+      Seq(
+        Option("url" -> hookConfig.url.toString),
+        hookConfig.contentType.map(ct => "content_type" -> ct.toString),
+        hookConfig.secret.map(s => "secret"             -> s.toString)
+      ).flatten.toMap.asJava
+  }
 
   private[githubclient] case class NewWebHook(events: Array[String]) extends RepositoryHook
 
@@ -85,14 +107,18 @@ object HooksApi {
         .setName(HookName.Web.value)
         .setConfig(config.toMap)
         .setActive(active)
+  }
 
-    private implicit class HookConfigOps(hookConfig: HookConfig) {
-      def toMap: java.util.Map[String, String] =
-        Seq(
-          Option("url" -> hookConfig.url.toString),
-          hookConfig.contentType.map(ct => "content_type" -> ct.toString),
-          hookConfig.secret.map(s => "secret"             -> s.toString)
-        ).flatten.toMap.asJava
-    }
+  private[githubclient] case class EditWebHook(events: Array[String]) extends RepositoryHook
+  private[githubclient] object EditWebHook {
+
+
+    def apply(hookId: HookId, config: HookConfig, active: Boolean, events: Set[HookEvent]): RepositoryHook =
+      EditWebHook(events.map(_.toString).toArray)
+        .setId(hookId.value)
+        .setName(HookName.Web.value)
+        .setConfig(config.toMap)
+        .setActive(active)
+
   }
 }

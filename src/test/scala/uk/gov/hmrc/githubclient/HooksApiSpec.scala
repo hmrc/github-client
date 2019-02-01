@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import org.scalatest.concurrent.ScalaFutures
 import play.api.libs.json.{JsValue, Json}
-import uk.gov.hmrc.githubclient.HooksApi.NewWebHook
+import uk.gov.hmrc.githubclient.HooksApi.{EditWebHook, NewWebHook}
 import uk.gov.hmrc.githubclient.HookEvent.{PullRequest, Push}
 import uk.gov.hmrc.githubclient.HookName.NonWebHookName
 
@@ -84,6 +84,60 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
 
       intercept[APIRateLimitExceededException] {
         Await.result(hooksApi.createWebHook(organisation, repoName, config), 1 second)
+      } shouldBe APIRateLimitExceededException(runtimeException)
+    }
+  }
+
+  "editWebHook" should {
+
+    "edit the given hook to the repository" in new Setup {
+      private val hookId = 123456
+
+      private val hookName = "web"
+      val receivedHook: RepositoryHook = new RepositoryHook()
+        .setId(hookId)
+        .setName(hookName)
+        .setActive(true)
+        .setUrl("http://github/hook/url/1")
+        .setConfig(Map("url" -> "http://webhook.url/1", "content_type" -> "form").asJava)
+
+      (repositoryServiceMock
+        .editHook(_: IRepositoryIdProvider, _: RepositoryHook))
+        .expects(
+          argAssert { provider: IRepositoryIdProvider =>
+            provider.generateId() shouldBe s"$organisation/$repoName"
+          },
+          argAssert { hook: EditWebHook =>
+            hook.getId                    shouldBe hookId
+            hook.getConfig.asScala("url") shouldBe "jenkins_hook_url"
+            hook.getName                  shouldBe hookName
+            hook.isActive                 shouldBe true
+            hook.events                   should contain only (Push.toString, PullRequest.toString)
+          }
+        )
+        .returning(receivedHook)
+
+      hooksApi
+        .editWebHook(organisation, repoName, Hook(HookId(hookId), Url("hook.com"), HookName(hookName), true, config), events)
+        .futureValue shouldBe Hook(HookId(receivedHook.getId),
+                                   Url(receivedHook.getUrl),
+                                   HookName.Web,
+                                   receivedHook.isActive,
+                                   HookConfig(
+                                     Url(receivedHook.getConfig.get("url")),
+                                     Some(HookContentType(receivedHook.getConfig.get("content_type")))
+                                   ))
+    }
+
+    "handle API rate limit error" in new Setup {
+
+      val runtimeException = new RuntimeException("api rate limit exceeded")
+      (repositoryServiceMock.editHook _)
+        .expects(*, *)
+        .throwing(runtimeException)
+
+      intercept[APIRateLimitExceededException] {
+        Await.result(hooksApi.editWebHook(organisation, repoName, Hook(HookId(12345), Url("hook.com"), HookName("web"), true, config), events), 1 second)
       } shouldBe APIRateLimitExceededException(runtimeException)
     }
   }
@@ -240,7 +294,9 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
         Some(HookSecret("some_secret"))
       )
 
-      val json: JsValue = Json.parse(new Gson().toJson(NewWebHook(hookConfig, active = true, events)))
+
+      private val repositoryHook: RepositoryHook = NewWebHook(hookConfig, active = true, events)
+      val json: JsValue = Json.parse(new Gson().toJson(repositoryHook))
 
       (json \ "name").as[String]                    shouldBe "web"
       (json \ "events").as[Seq[String]].toSet       shouldBe events.map(_.toString)
