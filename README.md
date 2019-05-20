@@ -3,7 +3,17 @@
 
 [![Build Status](https://travis-ci.org/hmrc/git-hub-client.svg?branch=master)](https://travis-ci.org/hmrc/git-hub-client) [ ![Download](https://api.bintray.com/packages/hmrc/releases/git-hub-client/images/download.svg) ](https://bintray.com/hmrc/releases/git-hub-client/_latestVersion)
 
-This is a placeholder README.md for a new repository
+### Setting up Github tokens locally
+
+You need to have a credentials file containing your Github token in your home directory at `~/.github/.credentials`.
+
+The format is as follows: 
+
+```
+api-url: "https://api.github.com"
+user:	<yourgithubuser>
+token:	<youraccesstoken>
+```
 
 ### License
 
