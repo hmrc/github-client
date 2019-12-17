@@ -18,8 +18,10 @@ package uk.gov.hmrc.githubclient
 
 import java.util
 
-import org.eclipse.egit.github.core.client.GitHubClient
+import com.google.gson.reflect.TypeToken
+import org.eclipse.egit.github.core.client.{GitHubClient, GitHubRequest}
 import org.eclipse.egit.github.core.service.ContentsService
+import scala.collection.JavaConverters._
 
 class ExtendedContentsService(client: GitHubClient) extends ContentsService(client) {
 
@@ -41,5 +43,13 @@ class ExtendedContentsService(client: GitHubClient) extends ContentsService(clie
     params.put("content", base64EncodedContents)
 
     client.put(uri.toString(), params, null)
+  }
+
+  def searchCode(query: String): SearchResults[GhCodeResult] = {
+    val request = new GitHubRequest()
+    request.setUri("/search/code")
+    request.setParams(java.util.Collections.singletonMap("q", query))
+    request.setType(new TypeToken[SearchResults[GhCodeResult]]() {}.getType)
+    client.get(request).getBody.asInstanceOf[SearchResults[GhCodeResult]]
   }
 }

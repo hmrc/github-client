@@ -24,12 +24,11 @@ import org.eclipse.egit.github.core.service._
 import org.eclipse.egit.github.core.{IRepositoryIdProvider, Repository, RepositoryContents}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.collection.JavaConverters._
 
 trait GithubApiClient extends HooksApi {
 
   import RateLimit._
-
-  import scala.collection.JavaConversions._
 
   protected val orgService: OrganizationService
   protected val teamService: ExtendedTeamService
@@ -39,19 +38,19 @@ trait GithubApiClient extends HooksApi {
 
   def getOrganisations(implicit ec: ExecutionContext): Future[List[GhOrganisation]] =
     Future {
-      orgService.getOrganizations.toList.map { go => GhOrganisation(go.getLogin, go.getId)
-      }
+      orgService.getOrganizations.asScala.toList
+        .map(go => GhOrganisation(go.getLogin, go.getId))
     }.checkForApiRateLimitError
 
   def getTeamsForOrganisation(org: String)(implicit ec: ExecutionContext): Future[List[GhTeam]] =
     Future {
-      teamService.getTeams(org).toList.map { gt => GhTeam(gt.getName, gt.getId)
-      }
+      teamService.getTeams(org).asScala.toList
+        .map(gt => GhTeam(gt.getName, gt.getId))
     }.checkForApiRateLimitError
 
   def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] =
     Future {
-      teamService.getRepositories(teamId.toInt).toList.map { gr =>
+      teamService.getRepositories(teamId.toInt).asScala.toList.map { gr =>
         GhRepository(
           gr.getName,
           Option(gr.getDescription).getOrElse(""),
@@ -69,9 +68,7 @@ trait GithubApiClient extends HooksApi {
   def getReposForOrg(org: String)(implicit ec: ExecutionContext): Future[List[GhRepository]] =
     Future {
       repositoryService
-        .getOrgRepositories(org)
-        .toList
-        .map { gr: Repository =>
+        .getOrgRepositories(org).asScala.toList.map { gr: Repository =>
           GhRepository(
             gr.getName,
             Option(gr.getDescription).getOrElse(""),
@@ -93,13 +90,13 @@ trait GithubApiClient extends HooksApi {
 
   def getTags(org: String, repoName: String)(implicit ec: ExecutionContext): Future[List[String]] =
     Future {
-      repositoryService.getTags(repositoryId(repoName, org)).map(_.getName).toList
+      repositoryService.getTags(repositoryId(repoName, org)).asScala.toList.map(_.getName)
     }.checkForApiRateLimitError
 
   def repoContainsContent(path: String, repoName: String, orgName: String)(
     implicit ec: ExecutionContext): Future[Boolean] = Future {
     try {
-      contentsService.getContents(repositoryId(repoName, orgName), path).nonEmpty
+      contentsService.getContents(repositoryId(repoName, orgName), path).asScala.nonEmpty
     } catch {
       case e if isRateLimit(e) =>
         rateLimitError(e)
@@ -110,13 +107,30 @@ trait GithubApiClient extends HooksApi {
     }
   }
 
+  def hasFile(repoName: String, orgName: String, filename: String)(
+    implicit ec: ExecutionContext): Future[Boolean] = Future {
+    try {
+      val query = s"repo:$orgName/$repoName filename:$filename"
+      val searchResults = contentsService.searchCode(query)
+      println(s"searchResults=$searchResults")
+      searchResults.total_count > 0
+    } catch {
+      case e if isRateLimit(e) =>
+        rateLimitError(e)
+      case e: Throwable =>
+        Log.warn(
+          s"repoContainsContent: error listing contents for :$repoName :$orgName errMessage : ${e.getMessage}")
+        false
+    }
+  }
+
   private def isDirectory(path: String, contents: Seq[RepositoryContents]) =
     contents.head.getPath != path
 
   def getFileContent(path: String, repoName: String, orgName: String)(
     implicit ec: ExecutionContext): Future[Option[String]] = Future {
     try {
-      val contents = contentsService.getContents(repositoryId(repoName, orgName), path)
+      val contents = contentsService.getContents(repositoryId(repoName, orgName), path).asScala
       if (contents.isEmpty || isDirectory(path, contents)) None
       else Some(new String(Base64.getMimeDecoder.decode(contents.head.getContent)))
     } catch {
@@ -150,7 +164,7 @@ trait GithubApiClient extends HooksApi {
 
   def teamId(orgName: String, team: String)(implicit ec: ExecutionContext): Future[Option[Int]] =
     Future {
-      teamService.getTeams(orgName).toList.find(t => t.getName == team).map(_.getId)
+      teamService.getTeams(orgName).asScala.toList.find(t => t.getName == team).map(_.getId)
     }.checkForApiRateLimitError
 
   def createRepo(orgName: String, repoName: String)(implicit ec: ExecutionContext): Future[String] =
