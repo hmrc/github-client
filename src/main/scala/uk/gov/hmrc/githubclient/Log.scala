@@ -20,6 +20,6 @@ import org.slf4j
 import play.api.{Logger, LoggerLike}
 
 object Log extends LoggerLike {
-  val loggerName: String            = "git-hub-client"
+  val loggerName: String            = "uk.gov.hmrc.githubclient"
   override val logger: slf4j.Logger = Logger(loggerName).logger
 }

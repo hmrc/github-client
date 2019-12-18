@@ -94,18 +94,10 @@ trait GithubApiClient extends HooksApi {
     }.checkForApiRateLimitError
 
   def repoContainsContent(path: String, repoName: String, orgName: String)(
-    implicit ec: ExecutionContext): Future[Boolean] = Future {
-    try {
+      implicit ec: ExecutionContext): Future[Boolean] =
+    Future {
       contentsService.getContents(repositoryId(repoName, orgName), path).asScala.nonEmpty
-    } catch {
-      case e if isRateLimit(e) =>
-        rateLimitError(e)
-      case e: Throwable =>
-        Log.warn(
-          s"repoContainsContent: error getting contents for path:($path) :$repoName :$orgName errMessage : ${e.getMessage}")
-        false
-    }
-  }
+    }.checkForApiRateLimitError
 
   def listContent(repoName: String, orgName: String)(
       implicit ec: ExecutionContext): Future[List[RepositoryContents]] =
