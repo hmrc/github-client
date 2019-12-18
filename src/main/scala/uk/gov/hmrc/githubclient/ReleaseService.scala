@@ -20,24 +20,21 @@ import com.google.gson.reflect.TypeToken
 import org.eclipse.egit.github.core.client.IGitHubConstants.SEGMENT_REPOS
 import org.eclipse.egit.github.core.client.{GitHubClient, PagedRequest}
 import org.eclipse.egit.github.core.service.GitHubService
+import scala.collection.JavaConverters._
 
 class ReleaseService(client: GitHubClient) extends GitHubService(client) {
 
   def getReleases(org: String, repoName: String): List[GhRepoRelease] = {
-    import scala.collection.JavaConversions._
-
     val request: PagedRequest[GhRepoRelease] = createPagedRequest()
     request.setUri(s"$SEGMENT_REPOS/$org/$repoName/releases")
     request.setType(new TypeToken[java.util.List[GhRepoRelease]]() {}.getType)
-    getAll(request).toList
+    getAll(request).asScala.toList
   }
 
   def getTags(org: String, repoName: String): List[GhRepoTag] = {
-    import scala.collection.JavaConversions._
-
     val request: PagedRequest[GhRepoTag] = createPagedRequest()
     request.setUri(s"$SEGMENT_REPOS/$org/$repoName/tags")
     request.setType(new TypeToken[java.util.List[GhRepoTag]]() {}.getType)
-    getAll(request).toList
+    getAll(request).asScala.toList
   }
 }

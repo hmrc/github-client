@@ -24,9 +24,10 @@ private object RateLimit {
     e.getMessage.toLowerCase.contains("api rate limit exceeded")
 
   implicit class RateLimitOps[T](theFuture: Future[T]) {
-    def checkForApiRateLimitError(implicit executionContext: ExecutionContext): Future[T] = theFuture recoverWith {
-      case e if isRateLimit(e) => rateLimitError(e)
-    }
+    def checkForApiRateLimitError(implicit executionContext: ExecutionContext): Future[T] =
+      theFuture.recoverWith {
+        case e if isRateLimit(e) => rateLimitError(e)
+      }
   }
 
   def rateLimitError[T](e: Throwable): T = {
