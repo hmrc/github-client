@@ -46,23 +46,6 @@ case class RepositoryName(value: String) extends NonEmptyString {
   override def toString: String = value
 }
 
-private [githubclient] case class SearchResults[A](
-  total_count       : Int,
-  incomplete_results: Boolean,
-  items             : java.util.List[A]
-)
-
-private [githubclient] case class GhCodeResult(
-  name      : String,
-  path      : String,
-  sha       : String,
-  url       : String,
-  git_url   : String,
-  html_url  : String,
-  repository: GhRepository,
-  score     : Double
-)
-
 case class HookConfig(url: Url, contentType: Option[HookContentType] = None, secret: Option[HookSecret] = None)
 
 case class Url(value: String) extends NonEmptyString {

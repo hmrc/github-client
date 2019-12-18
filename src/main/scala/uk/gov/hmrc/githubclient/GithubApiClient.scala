@@ -107,22 +107,11 @@ trait GithubApiClient extends HooksApi {
     }
   }
 
-  def hasFile(repoName: String, orgName: String, filename: String)(
-    implicit ec: ExecutionContext): Future[Boolean] = Future {
-    try {
-      val query = s"repo:$orgName/$repoName filename:$filename"
-      val searchResults = contentsService.searchCode(query)
-      println(s"searchResults=$searchResults")
-      searchResults.total_count > 0
-    } catch {
-      case e if isRateLimit(e) =>
-        rateLimitError(e)
-      case e: Throwable =>
-        Log.warn(
-          s"repoContainsContent: error listing contents for :$repoName :$orgName errMessage : ${e.getMessage}")
-        false
-    }
-  }
+  def listContent(repoName: String, orgName: String)(
+      implicit ec: ExecutionContext): Future[List[RepositoryContents]] =
+    Future {
+      contentsService.getContents(repositoryId(repoName, orgName)).asScala.toList
+    }.checkForApiRateLimitError
 
   private def isDirectory(path: String, contents: Seq[RepositoryContents]) =
     contents.head.getPath != path

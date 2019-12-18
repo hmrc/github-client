@@ -18,10 +18,8 @@ package uk.gov.hmrc.githubclient
 
 import java.util
 
-import com.google.gson.reflect.TypeToken
-import org.eclipse.egit.github.core.client.{GitHubClient, GitHubRequest}
+import org.eclipse.egit.github.core.client.GitHubClient
 import org.eclipse.egit.github.core.service.ContentsService
-import scala.collection.JavaConverters._
 
 class ExtendedContentsService(client: GitHubClient) extends ContentsService(client) {
 
@@ -43,24 +41,5 @@ class ExtendedContentsService(client: GitHubClient) extends ContentsService(clie
     params.put("content", base64EncodedContents)
 
     client.put(uri.toString(), params, null)
-  }
-
-  def searchCode(query: String): SearchResults[GhCodeResult] =
-    searchCode(query, 1)._2
-
-  def searchAllCode(query: String): List[GhCodeResult] =
-    Stream.from(1).map(searchCode(query, _)).takeWhile(_._1).map(_._2.items.asScala).toList.flatten
-
-  private def searchCode(query: String, page: Int): (Boolean, SearchResults[GhCodeResult]) = {
-    val request = new GitHubRequest()
-    request.setUri("/search/code")
-    val params = new util.HashMap[String, String]()
-    params.put("q", query)
-    params.put("page", page.toString)
-    request.setParams(params)
-    request.setType(new TypeToken[SearchResults[GhCodeResult]]() {}.getType)
-    val response = client.get(request)
-    val results = response.getBody.asInstanceOf[SearchResults[GhCodeResult]]
-    (Option(response.getNext).isDefined, results)
   }
 }
