@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 HM Revenue & Customs
+ * Copyright 2020 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,8 +96,15 @@ trait GithubApiClient extends HooksApi {
   def repoContainsContent(path: String, repoName: String, orgName: String)(
       implicit ec: ExecutionContext): Future[Boolean] =
     Future {
-      contentsService.getContents(repositoryId(repoName, orgName), path).asScala.nonEmpty
-    }.checkForApiRateLimitError
+      try {
+        contentsService.getContents(repositoryId(repoName, orgName), path).asScala.nonEmpty
+      } catch {
+        case e if isRateLimit(e) =>
+          rateLimitError(e)
+        case e: RequestException if e.getStatus == 404 =>
+          false
+        }
+    }
 
   def listContent(repoName: String, orgName: String)(
       implicit ec: ExecutionContext): Future[List[RepositoryContents]] =
@@ -117,10 +124,7 @@ trait GithubApiClient extends HooksApi {
     } catch {
       case e if isRateLimit(e) =>
         rateLimitError(e)
-      case e: Throwable =>
-        Log.warn(
-          s"getFileContent: error getting file content for path: $path :$repoName :$orgName errMessage : ${e.getMessage}"
-        )
+      case e: RequestException if e.getStatus == 404 =>
         None
     }
   }
@@ -136,10 +140,8 @@ trait GithubApiClient extends HooksApi {
     } catch {
       case e if isRateLimit(e) =>
         rateLimitError(e)
-      case ex: RequestException =>
-        Log.warn(s"containsRepo: error getting repo for :$repoName :$orgName errMessage : ${ex.getMessage}")
-        if (ex.getMessage.contains("404")) false
-        else throw ex;
+      case e: RequestException if e.getStatus == 404 =>
+        false
     }
   }
 
