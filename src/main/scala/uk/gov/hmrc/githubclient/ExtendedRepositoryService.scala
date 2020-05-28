@@ -20,25 +20,24 @@ import org.eclipse.egit.github.core.service.RepositoryService
 import java.util
 
 import com.google.gson.reflect.TypeToken
-import org.eclipse.egit.github.core.client.IGitHubConstants.{SEGMENT_ORGS, SEGMENT_REPOS}
 import org.eclipse.egit.github.core.client.PagedRequest
 
 class ExtendedRepositoryService(client: ExtendedGitHubClient) extends RepositoryService(client) {
 
   // These values are copied from the underlying RespositoryService
-  private val PAGE_SIZE = 100
-  private val PAGE_FIRST = 1
+  private val pageSize = 100
+  private val pageFirst = 1
 
   def getOrgExtendedRepositories(org: String): util.List[ExtendedRepository] = {
 
     if (org == null || org.length == 0) throw new IllegalArgumentException("Organization cannot be null or empty")
 
-    val uri = new StringBuilder(SEGMENT_ORGS)
+    val uri = new StringBuilder("/orgs")
     uri.append('/').append(org)
-    uri.append(SEGMENT_REPOS)
+    uri.append("/repos")
 
     val request =
-      createPagedRequest(PAGE_FIRST, PAGE_SIZE)
+      createPagedRequest(pageFirst, pageSize)
         .setUri(uri.toString())
         .setType(new TypeToken[util.List[ExtendedRepository]]() {}.getType)
         .asInstanceOf[PagedRequest[ExtendedRepository]]
