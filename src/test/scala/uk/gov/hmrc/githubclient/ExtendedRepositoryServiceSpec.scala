@@ -59,7 +59,7 @@ class ExtendedRepositoryServiceSpec extends WordSpec with Matchers with MockitoS
       val repositoryService = new ExtendedRepositoryService(githubClient)
       val repositoriesResponse = repositoryService.getOrgExtendedRepositories("HMRC")
 
-      val expectedRepos: java.util.List[ExtendedRepository] = List(repository)
+      val expectedRepos = List(repository)
       repositoriesResponse shouldBe expectedRepos
     }
   }

@@ -149,7 +149,7 @@ class GithubApiClientSpec
       private val fiveDaysAgo     = LocalDate.now().minusDays(5).toEpochDay
       private val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
-      val repos: java.util.List[ExtendedRepository] = List(
+      val repos = List(
         new ExtendedRepository()
           .setName("repoA")
           .setDescription("some desc")
@@ -177,7 +177,7 @@ class GithubApiClientSpec
       private val fiveDaysAgo     = LocalDate.now().minusDays(5).toEpochDay
       private val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
-      val repos: java.util.List[ExtendedRepository] = List(
+      val repos = List(
         new ExtendedRepository()
           .setName("repoA")
           .setDescription(null)
@@ -479,7 +479,7 @@ class GithubApiClientSpec
       private val fiveDaysAgo     = LocalDate.now().minusDays(5).toEpochDay
       private val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
-      val repos: java.util.List[ExtendedRepository] = List(
+      val repos= List(
         new ExtendedRepository()
           .setName("repoA")
           .setDescription("some desc")

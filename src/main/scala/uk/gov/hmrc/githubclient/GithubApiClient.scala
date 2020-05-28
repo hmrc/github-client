@@ -50,7 +50,7 @@ trait GithubApiClient extends HooksApi {
 
   def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] =
     Future {
-      teamService.getExtendedRepositories(teamId.toInt).asScala.toList.map { gr =>
+      teamService.getExtendedRepositories(teamId.toInt).map { gr =>
         GhRepository(
           gr.getName,
           Option(gr.getDescription).getOrElse(""),
@@ -69,7 +69,7 @@ trait GithubApiClient extends HooksApi {
   def getReposForOrg(org: String)(implicit ec: ExecutionContext): Future[List[GhRepository]] =
     Future {
       repositoryService
-        .getOrgExtendedRepositories(org).asScala.toList.map { gr: ExtendedRepository =>
+        .getOrgExtendedRepositories(org).map { gr: ExtendedRepository =>
           GhRepository(
             gr.getName,
             Option(gr.getDescription).getOrElse(""),

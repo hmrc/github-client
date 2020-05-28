@@ -59,7 +59,7 @@ class ExtendedTeamServiceSpec extends WordSpec with Matchers with MockitoSugar {
       val repositoryService = new ExtendedTeamService(githubClient)
       val repositoriesResponse = repositoryService.getExtendedRepositories(1)
 
-      val expectedRepos: java.util.List[ExtendedRepository] = List(repository)
+      val expectedRepos = List(repository)
       repositoriesResponse shouldBe expectedRepos
     }
   }

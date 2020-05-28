@@ -22,6 +22,7 @@ import com.google.gson.reflect.TypeToken
 import org.eclipse.egit.github.core.client.PagedRequest
 import org.eclipse.egit.github.core.service.TeamService
 import org.eclipse.egit.github.core.{IRepositoryIdProvider, Team}
+import scala.collection.JavaConverters._
 
 class ExtendedTeamService(client: ExtendedGitHubClient) extends TeamService(client) {
 
@@ -41,7 +42,7 @@ class ExtendedTeamService(client: ExtendedGitHubClient) extends TeamService(clie
     client.put(uri.toString(), params, headers, classOf[Team])
   }
 
-  def getExtendedRepositories(id: Int): util.List[ExtendedRepository] = {
+  def getExtendedRepositories(id: Int): List[ExtendedRepository] = {
     val uri = new StringBuilder("/teams")
     uri.append('/').append(id)
     uri.append("/repos")
@@ -54,6 +55,6 @@ class ExtendedTeamService(client: ExtendedGitHubClient) extends TeamService(clie
         .setType(typeToken)
         .asInstanceOf[PagedRequest[ExtendedRepository]]
 
-    getAll(request)
+    getAll(request).asScala.toList
   }
 }

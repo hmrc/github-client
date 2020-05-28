@@ -18,9 +18,9 @@ package uk.gov.hmrc.githubclient
 
 import org.eclipse.egit.github.core.service.RepositoryService
 import java.util
-
 import com.google.gson.reflect.TypeToken
 import org.eclipse.egit.github.core.client.PagedRequest
+import scala.collection.JavaConverters._
 
 class ExtendedRepositoryService(client: ExtendedGitHubClient) extends RepositoryService(client) {
 
@@ -28,7 +28,7 @@ class ExtendedRepositoryService(client: ExtendedGitHubClient) extends Repository
   private val pageSize = 100
   private val pageFirst = 1
 
-  def getOrgExtendedRepositories(org: String): util.List[ExtendedRepository] = {
+  def getOrgExtendedRepositories(org: String): List[ExtendedRepository] = {
 
     if (org == null || org.length == 0) throw new IllegalArgumentException("Organization cannot be null or empty")
 
@@ -43,6 +43,6 @@ class ExtendedRepositoryService(client: ExtendedGitHubClient) extends Repository
         .asInstanceOf[PagedRequest[ExtendedRepository]]
     val pageIterator = createPageIterator(request)
 
-    getAll(pageIterator)
+    getAll(pageIterator).asScala.toList
   }
 }
