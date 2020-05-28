@@ -51,7 +51,6 @@ trait GithubApiClient extends HooksApi {
   def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] =
     Future {
       teamService.getExtendedRepositories(teamId.toInt).map { gr =>
-        println(s"gr.description is ${gr.description}, as option is ${Option(gr.description)}")
         GhRepository(
           gr.name,
           Option(gr.description).getOrElse(""),
