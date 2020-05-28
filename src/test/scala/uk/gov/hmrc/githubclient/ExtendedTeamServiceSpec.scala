@@ -37,18 +37,18 @@ class ExtendedTeamServiceSpec extends WordSpec with Matchers with MockitoSugar {
       val fiveDaysAgo     = LocalDate.now().minusDays(5).toEpochDay
       val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
-      val repository =
-        new ExtendedRepository()
-          .setName("repoA")
-          .setDescription("some desc")
-          .setId(1)
-          .setHtmlUrl("http://some/html/url")
-          .setIsFork(true)
-          .setCreatedAt(fiveDaysAgoDate)
-          .setPushedAt(nowDate)
-          .setIsPrivate(true)
-          .setLanguage("Scala")
-          .setArchived(true)
+      val repository = ExtendedRepository(
+        name = "repoA",
+        description = "some desc",
+        id = 1,
+        htmlUrl = "http://some/html/url",
+        fork = true,
+        createdAt = fiveDaysAgoDate,
+        pushedAt = nowDate,
+        isPrivate = true,
+        language = "Scala",
+        archived = true
+      )
 
       val response: GitHubResponse = mock[GitHubResponse]
       Mockito.doReturn(repository).when(response).getBody

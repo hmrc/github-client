@@ -51,17 +51,18 @@ trait GithubApiClient extends HooksApi {
   def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] =
     Future {
       teamService.getExtendedRepositories(teamId.toInt).map { gr =>
+        println(s"gr.description is ${gr.description}, as option is ${Option(gr.description)}")
         GhRepository(
-          gr.getName,
-          Option(gr.getDescription).getOrElse(""),
-          gr.getId,
-          gr.getHtmlUrl,
-          gr.isFork,
-          gr.getCreatedAt.getTime,
-          gr.getPushedAt.getTime,
+          gr.name,
+          Option(gr.description).getOrElse(""),
+          gr.id,
+          gr.htmlUrl,
+          gr.fork,
+          gr.createdAt.getTime,
+          gr.pushedAt.getTime,
           gr.isPrivate,
-          Option(gr.getLanguage).getOrElse(""),
-          gr.isArchived
+          Option(gr.language).getOrElse(""),
+          gr.archived
         )
       }
     }.checkForApiRateLimitError
@@ -70,17 +71,17 @@ trait GithubApiClient extends HooksApi {
     Future {
       repositoryService
         .getOrgExtendedRepositories(org).map { gr: ExtendedRepository =>
-          GhRepository(
-            gr.getName,
-            Option(gr.getDescription).getOrElse(""),
-            gr.getId,
-            gr.getHtmlUrl,
-            gr.isFork,
-            gr.getCreatedAt.getTime,
-            gr.getPushedAt.getTime,
+        GhRepository(
+            gr.name,
+            Option(gr.description).getOrElse(""),
+            gr.id,
+            gr.htmlUrl,
+            gr.fork,
+            gr.createdAt.getTime,
+            gr.pushedAt.getTime,
             gr.isPrivate,
-            Option(gr.getLanguage).getOrElse(""),
-            gr.isArchived
+            Option(gr.language).getOrElse(""),
+            gr.archived
           )
         }
     }.checkForApiRateLimitError

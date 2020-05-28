@@ -149,19 +149,18 @@ class GithubApiClientSpec
       private val fiveDaysAgo     = LocalDate.now().minusDays(5).toEpochDay
       private val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
-      val repos = List(
-        new ExtendedRepository()
-          .setName("repoA")
-          .setDescription("some desc")
-          .setId(1)
-          .setHtmlUrl("http://some/html/url")
-          .setIsFork(true)
-          .setCreatedAt(fiveDaysAgoDate)
-          .setPushedAt(nowDate)
-          .setIsPrivate(true)
-          .setLanguage("Scala")
-          .setArchived(true)
-      )
+      val repos = List(ExtendedRepository(
+        name = "repoA",
+        description = "some desc",
+        id = 1,
+        htmlUrl = "http://some/html/url",
+        fork = true,
+        createdAt = fiveDaysAgoDate,
+        pushedAt = nowDate,
+        isPrivate = true,
+        language = "Scala",
+        archived = true
+      ))
 
       Mockito.when(mockTeamService.getExtendedRepositories(1)).thenReturn(repos)
 
@@ -177,19 +176,18 @@ class GithubApiClientSpec
       private val fiveDaysAgo     = LocalDate.now().minusDays(5).toEpochDay
       private val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
-      val repos = List(
-        new ExtendedRepository()
-          .setName("repoA")
-          .setDescription(null)
-          .setId(1)
-          .setHtmlUrl("http://some/html/url")
-          .setIsFork(true)
-          .setCreatedAt(fiveDaysAgoDate)
-          .setPushedAt(nowDate)
-          .setIsPrivate(false)
-          .setLanguage(null)
-          .setArchived(false)
-      )
+      val repos = List(ExtendedRepository(
+        name = "repoA",
+        description = null,
+        id = 1,
+        htmlUrl = "http://some/html/url",
+        fork = true,
+        createdAt = fiveDaysAgoDate,
+        pushedAt = nowDate,
+        isPrivate = false,
+        language = null,
+        archived = false
+      ))
 
       Mockito.when(mockTeamService.getExtendedRepositories(1)).thenReturn(repos)
 
@@ -479,19 +477,18 @@ class GithubApiClientSpec
       private val fiveDaysAgo     = LocalDate.now().minusDays(5).toEpochDay
       private val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
-      val repos= List(
-        new ExtendedRepository()
-          .setName("repoA")
-          .setDescription("some desc")
-          .setId(1)
-          .setHtmlUrl("http://some/html/url")
-          .setIsFork(true)
-          .setCreatedAt(fiveDaysAgoDate)
-          .setPushedAt(nowDate)
-          .setIsPrivate(true)
-          .setLanguage("Scala")
-          .setArchived(true)
-      )
+      val repos = List(ExtendedRepository(
+        name = "repoA",
+        description = "some desc",
+        id = 1,
+        htmlUrl = "http://some/html/url",
+        fork = true,
+        createdAt = fiveDaysAgoDate,
+        pushedAt = nowDate,
+        isPrivate = true,
+        language = "Scala",
+        archived = true
+      ))
 
       Mockito
         .when(mockRepositoryService.getOrgExtendedRepositories(organisation))

@@ -17,6 +17,7 @@
 package uk.gov.hmrc.githubclient
 
 import java.util.Date
+import com.google.gson.annotations.SerializedName
 
 case class GhOrganisation(login: String, id: Int = 0)
 
@@ -200,3 +201,13 @@ trait NonEmptyString {
   def value: String
   require(value.trim.nonEmpty, s"${getClass.getSimpleName} cannot be empty")
 }
+case class ExtendedRepository(name: String,
+                              description: String,
+                              id: Long,
+                              htmlUrl: String,
+                              fork: Boolean,
+                              createdAt: Date,
+                              pushedAt: Date,
+                              @SerializedName("private") isPrivate: Boolean,
+                              language: String,
+                              archived: Boolean)
