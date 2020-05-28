@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 HM Revenue & Customs
+ * Copyright 2020 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,19 +49,19 @@ class GithubApiClientSpec
   val apiRateLimitExceeded = APIRateLimitExceededException(rateLimitException)
 
   trait Setup {
-    val mockOrgService: OrganizationService          = mock[OrganizationService]
-    val mockTeamService: ExtendedTeamService         = mock[ExtendedTeamService]
-    val mockRepositoryService: RepositoryService     = mock[RepositoryService]
-    val mockContentsService: ExtendedContentsService = mock[ExtendedContentsService]
-    val mockReleaseService: ReleaseService           = mock[ReleaseService]
+    val mockOrgService: OrganizationService              = mock[OrganizationService]
+    val mockTeamService: ExtendedTeamService             = mock[ExtendedTeamService]
+    val mockRepositoryService: ExtendedRepositoryService = mock[ExtendedRepositoryService]
+    val mockContentsService: ExtendedContentsService     = mock[ExtendedContentsService]
+    val mockReleaseService: ReleaseService               = mock[ReleaseService]
 
     def githubApiClient = new GithubApiClient {
-      val orgService: OrganizationService          = mockOrgService
-      val teamService: ExtendedTeamService         = mockTeamService
-      val repositoryService: RepositoryService     = mockRepositoryService
-      val contentsService: ExtendedContentsService = mockContentsService
-      val releaseService                           = mockReleaseService
-      val metrics: GithubClientMetrics             = DefaultGithubClientMetrics
+      val orgService: OrganizationService              = mockOrgService
+      val teamService: ExtendedTeamService             = mockTeamService
+      val repositoryService: ExtendedRepositoryService = mockRepositoryService
+      val contentsService: ExtendedContentsService     = mockContentsService
+      val releaseService                               = mockReleaseService
+      val metrics: GithubClientMetrics                 = DefaultGithubClientMetrics
     }
   }
 
@@ -141,7 +141,7 @@ class GithubApiClientSpec
   }
 
   "GitHubAPIClient.getReposForTeam" should {
-    "get all team for organization" in new Setup {
+    "get all all repos for a team including archived status" in new Setup {
 
       private val nowDate = new Date()
       private val now     = nowDate.getTime
@@ -149,23 +149,23 @@ class GithubApiClientSpec
       private val fiveDaysAgo     = LocalDate.now().minusDays(5).toEpochDay
       private val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
-      val repos: java.util.List[Repository] = List(
-        new Repository()
-          .setName("repoA")
-          .setDescription("some desc")
-          .setId(1)
-          .setHtmlUrl("http://some/html/url")
-          .setFork(true)
-          .setCreatedAt(fiveDaysAgoDate)
-          .setPushedAt(nowDate)
-          .setPrivate(true)
-          .setLanguage("Scala")
-      )
+      val repos = List(ExtendedRepository(
+        name = "repoA",
+        description = "some desc",
+        id = 1,
+        htmlUrl = "http://some/html/url",
+        fork = true,
+        createdAt = fiveDaysAgoDate,
+        pushedAt = nowDate,
+        isPrivate = true,
+        language = "Scala",
+        archived = true
+      ))
 
-      Mockito.when(mockTeamService.getRepositories(1)).thenReturn(repos)
+      Mockito.when(mockTeamService.getExtendedRepositories(1)).thenReturn(repos)
 
       githubApiClient.getReposForTeam(1).futureValue shouldBe List(
-        GhRepository("repoA", "some desc", 1, "http://some/html/url", true, fiveDaysAgo, now, true, "Scala"))
+        GhRepository("repoA", "some desc", 1, "http://some/html/url", true, fiveDaysAgo, now, true, "Scala", true))
     }
 
     "default description and language to empty string" in new Setup {
@@ -176,28 +176,28 @@ class GithubApiClientSpec
       private val fiveDaysAgo     = LocalDate.now().minusDays(5).toEpochDay
       private val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
-      val repos: java.util.List[Repository] = List(
-        new Repository()
-          .setName("repoA")
-          .setDescription(null)
-          .setId(1)
-          .setHtmlUrl("http://some/html/url")
-          .setFork(true)
-          .setCreatedAt(fiveDaysAgoDate)
-          .setPushedAt(nowDate)
-          .setPrivate(false)
-          .setLanguage(null)
-      )
+      val repos = List(ExtendedRepository(
+        name = "repoA",
+        description = null,
+        id = 1,
+        htmlUrl = "http://some/html/url",
+        fork = true,
+        createdAt = fiveDaysAgoDate,
+        pushedAt = nowDate,
+        isPrivate = false,
+        language = null,
+        archived = false
+      ))
 
-      Mockito.when(mockTeamService.getRepositories(1)).thenReturn(repos)
+      Mockito.when(mockTeamService.getExtendedRepositories(1)).thenReturn(repos)
 
       githubApiClient.getReposForTeam(1).futureValue shouldBe List(
-        GhRepository("repoA", "", 1, "http://some/html/url", true, fiveDaysAgo, now, false, ""))
+        GhRepository("repoA", "", 1, "http://some/html/url", true, fiveDaysAgo, now, false, "", false))
     }
 
     "handle API rate limit error" in new Setup {
 
-      Mockito.when(mockTeamService.getRepositories(1)).thenThrow(rateLimitException)
+      Mockito.when(mockTeamService.getExtendedRepositories(1)).thenThrow(rateLimitException)
 
       whenReady(githubApiClient.getReposForTeam(1).failed) { e =>
         e shouldBe apiRateLimitExceeded
@@ -477,30 +477,30 @@ class GithubApiClientSpec
       private val fiveDaysAgo     = LocalDate.now().minusDays(5).toEpochDay
       private val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
-      val repos: java.util.List[Repository] = List(
-        new Repository()
-          .setName("repoA")
-          .setDescription("some desc")
-          .setId(1)
-          .setHtmlUrl("http://some/html/url")
-          .setFork(true)
-          .setCreatedAt(fiveDaysAgoDate)
-          .setPushedAt(nowDate)
-          .setPrivate(true)
-          .setLanguage("Scala")
-      )
+      val repos = List(ExtendedRepository(
+        name = "repoA",
+        description = "some desc",
+        id = 1,
+        htmlUrl = "http://some/html/url",
+        fork = true,
+        createdAt = fiveDaysAgoDate,
+        pushedAt = nowDate,
+        isPrivate = true,
+        language = "Scala",
+        archived = true
+      ))
 
       Mockito
-        .when(mockRepositoryService.getOrgRepositories(organisation))
+        .when(mockRepositoryService.getOrgExtendedRepositories(organisation))
         .thenReturn(repos)
 
       githubApiClient.getReposForOrg(organisation).futureValue shouldBe List(
-        GhRepository("repoA", "some desc", 1, "http://some/html/url", true, fiveDaysAgo, now, true, "Scala"))
+        GhRepository("repoA", "some desc", 1, "http://some/html/url", true, fiveDaysAgo, now, true, "Scala", true))
     }
 
     "return empty list when no repos exists" in new Setup {
       Mockito
-        .when(mockRepositoryService.getOrgRepositories(organisation))
+        .when(mockRepositoryService.getOrgExtendedRepositories(organisation))
         .thenReturn(List())
 
       githubApiClient.getReposForOrg(organisation).futureValue shouldBe List()
@@ -508,7 +508,7 @@ class GithubApiClientSpec
 
     "handle API rate limit error" in new Setup {
 
-      Mockito.when(mockTeamService.getRepositories(1)).thenThrow(rateLimitException)
+      Mockito.when(mockTeamService.getExtendedRepositories(1)).thenThrow(rateLimitException)
 
       whenReady(githubApiClient.getReposForTeam(1).failed) { e =>
         e shouldBe apiRateLimitExceeded

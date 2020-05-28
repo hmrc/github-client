@@ -18,8 +18,11 @@ package uk.gov.hmrc.githubclient
 
 import java.util
 
+import com.google.gson.reflect.TypeToken
+import org.eclipse.egit.github.core.client.PagedRequest
 import org.eclipse.egit.github.core.service.TeamService
 import org.eclipse.egit.github.core.{IRepositoryIdProvider, Team}
+import scala.collection.JavaConverters._
 
 class ExtendedTeamService(client: ExtendedGitHubClient) extends TeamService(client) {
 
@@ -37,5 +40,21 @@ class ExtendedTeamService(client: ExtendedGitHubClient) extends TeamService(clie
     val headers = Map("Accept" -> "application/vnd.github.ironman-preview+json")
 
     client.put(uri.toString(), params, headers, classOf[Team])
+  }
+
+  def getExtendedRepositories(id: Int): List[ExtendedRepository] = {
+    val uri = new StringBuilder("/teams")
+    uri.append('/').append(id)
+    uri.append("/repos")
+
+    val typeToken = new TypeToken[util.List[ExtendedRepository]]() {}.getType
+
+    val request: PagedRequest[ExtendedRepository] =
+      createPagedRequest()
+        .setUri(uri.toString())
+        .setType(typeToken)
+        .asInstanceOf[PagedRequest[ExtendedRepository]]
+
+    getAll(request).asScala.toList
   }
 }

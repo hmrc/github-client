@@ -32,7 +32,7 @@ trait GithubApiClient extends HooksApi {
 
   protected val orgService: OrganizationService
   protected val teamService: ExtendedTeamService
-  protected val repositoryService: RepositoryService
+  protected val repositoryService: ExtendedRepositoryService
   protected val contentsService: ExtendedContentsService
   protected val releaseService: ReleaseService
 
@@ -50,17 +50,18 @@ trait GithubApiClient extends HooksApi {
 
   def getReposForTeam(teamId: Long)(implicit ec: ExecutionContext): Future[List[GhRepository]] =
     Future {
-      teamService.getRepositories(teamId.toInt).asScala.toList.map { gr =>
+      teamService.getExtendedRepositories(teamId.toInt).map { gr =>
         GhRepository(
-          gr.getName,
-          Option(gr.getDescription).getOrElse(""),
-          gr.getId,
-          gr.getHtmlUrl,
-          gr.isFork,
-          gr.getCreatedAt.getTime,
-          gr.getPushedAt.getTime,
+          gr.name,
+          Option(gr.description).getOrElse(""),
+          gr.id,
+          gr.htmlUrl,
+          gr.fork,
+          gr.createdAt.getTime,
+          gr.pushedAt.getTime,
           gr.isPrivate,
-          Option(gr.getLanguage).getOrElse("")
+          Option(gr.language).getOrElse(""),
+          gr.archived
         )
       }
     }.checkForApiRateLimitError
@@ -68,17 +69,18 @@ trait GithubApiClient extends HooksApi {
   def getReposForOrg(org: String)(implicit ec: ExecutionContext): Future[List[GhRepository]] =
     Future {
       repositoryService
-        .getOrgRepositories(org).asScala.toList.map { gr: Repository =>
-          GhRepository(
-            gr.getName,
-            Option(gr.getDescription).getOrElse(""),
-            gr.getId,
-            gr.getHtmlUrl,
-            gr.isFork,
-            gr.getCreatedAt.getTime,
-            gr.getPushedAt.getTime,
+        .getOrgExtendedRepositories(org).map { gr: ExtendedRepository =>
+        GhRepository(
+            gr.name,
+            Option(gr.description).getOrElse(""),
+            gr.id,
+            gr.htmlUrl,
+            gr.fork,
+            gr.createdAt.getTime,
+            gr.pushedAt.getTime,
             gr.isPrivate,
-            Option(gr.getLanguage).getOrElse("")
+            Option(gr.language).getOrElse(""),
+            gr.archived
           )
         }
     }.checkForApiRateLimitError
@@ -186,11 +188,11 @@ object GithubApiClient {
       .asInstanceOf[ExtendedGitHubClient]
 
     new GithubApiClient {
-      val orgService: OrganizationService          = new OrganizationService(client)
-      val teamService: ExtendedTeamService         = new ExtendedTeamService(client)
-      val repositoryService: RepositoryService     = new RepositoryService(client)
-      val contentsService: ExtendedContentsService = new ExtendedContentsService(client)
-      val releaseService: ReleaseService           = new ReleaseService(client)
+      val orgService: OrganizationService              = new OrganizationService(client)
+      val teamService: ExtendedTeamService             = new ExtendedTeamService(client)
+      val repositoryService: ExtendedRepositoryService = new ExtendedRepositoryService(client)
+      val contentsService: ExtendedContentsService     = new ExtendedContentsService(client)
+      val releaseService: ReleaseService               = new ReleaseService(client)
     }
   }
 }
