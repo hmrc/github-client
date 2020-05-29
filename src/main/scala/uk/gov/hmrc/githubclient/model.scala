@@ -33,7 +33,7 @@ case class GhRepository(
   lastActiveDate: Long,
   isPrivate: Boolean,
   language: String,
-  isArchived: Boolean
+  archived: Boolean
 )
 
 case class GhRepoRelease(id: Long, tagName: String, createdAt: Date)
