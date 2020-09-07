@@ -59,7 +59,7 @@ trait GithubApiClient extends HooksApi {
           gr.fork,
           gr.createdAt.getTime,
           gr.pushedAt.getTime,
-          gr.isPrivate,
+          gr.`private`,
           Option(gr.language).getOrElse(""),
           gr.archived
         )
@@ -78,7 +78,7 @@ trait GithubApiClient extends HooksApi {
             gr.fork,
             gr.createdAt.getTime,
             gr.pushedAt.getTime,
-            gr.isPrivate,
+            gr.`private`,
             Option(gr.language).getOrElse(""),
             gr.archived
           )

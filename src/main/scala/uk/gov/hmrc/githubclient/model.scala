@@ -17,7 +17,6 @@
 package uk.gov.hmrc.githubclient
 
 import java.util.Date
-import com.google.gson.annotations.SerializedName
 
 case class GhOrganisation(login: String, id: Int = 0)
 
@@ -208,6 +207,6 @@ case class ExtendedRepository(name: String,
                               fork: Boolean,
                               createdAt: Date,
                               pushedAt: Date,
-                              @SerializedName("private") isPrivate: Boolean,
+                              `private`: Boolean,
                               language: String,
                               archived: Boolean)

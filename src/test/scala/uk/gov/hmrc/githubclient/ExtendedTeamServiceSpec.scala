@@ -25,8 +25,6 @@ import org.mockito.Mockito
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 
-import scala.collection.JavaConversions._
-
 class ExtendedTeamServiceSpec extends WordSpec with Matchers with MockitoSugar {
 
   "ExtendedTeamServiceSpec.getExtendedRepositories" should {
@@ -45,7 +43,7 @@ class ExtendedTeamServiceSpec extends WordSpec with Matchers with MockitoSugar {
         fork = true,
         createdAt = fiveDaysAgoDate,
         pushedAt = nowDate,
-        isPrivate = true,
+        `private` = true,
         language = "Scala",
         archived = true
       )
