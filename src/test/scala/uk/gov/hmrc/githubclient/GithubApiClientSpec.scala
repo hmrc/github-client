@@ -22,7 +22,7 @@ import java.util.{Base64, Date}
 
 import org.eclipse.egit.github.core._
 import org.eclipse.egit.github.core.client.RequestException
-import org.eclipse.egit.github.core.service.{OrganizationService, RepositoryService}
+import org.eclipse.egit.github.core.service.{OrganizationService}
 import org.mockito.Matchers.{any, same}
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
@@ -61,7 +61,6 @@ class GithubApiClientSpec
       val repositoryService: ExtendedRepositoryService = mockRepositoryService
       val contentsService: ExtendedContentsService     = mockContentsService
       val releaseService                               = mockReleaseService
-      val metrics: GithubClientMetrics                 = DefaultGithubClientMetrics
     }
   }
 
@@ -157,7 +156,7 @@ class GithubApiClientSpec
         fork = true,
         createdAt = fiveDaysAgoDate,
         pushedAt = nowDate,
-        isPrivate = true,
+        `private` = true,
         language = "Scala",
         archived = true
       ))
@@ -184,7 +183,7 @@ class GithubApiClientSpec
         fork = true,
         createdAt = fiveDaysAgoDate,
         pushedAt = nowDate,
-        isPrivate = false,
+        `private` = false,
         language = null,
         archived = false
       ))
@@ -315,16 +314,12 @@ class GithubApiClientSpec
     }
 
     "return false when the repo does not exist" in new Setup {
-      val repository = new Repository().setName(repoName)
-
       Mockito.when(mockRepositoryService.getRepository(owner, repoName)).thenReturn(null)
 
       githubApiClient.containsRepo(owner, repoName).futureValue shouldBe false
     }
 
     "throw exception when egit encounters an error" in new Setup {
-      val repository = new Repository().setName(repoName)
-
       Mockito
         .when(mockRepositoryService.getRepository(owner, repoName))
         .thenThrow(new RequestException(new RequestError(), 500))
@@ -406,10 +401,6 @@ class GithubApiClientSpec
     val repoName     = "test-repo"
 
     "add a repository to a team in" in new Setup {
-
-      var teamId: Int                       = 0
-      var idProvider: IRepositoryIdProvider = null
-
       case class Arguments(teamId: Int, idProvider: IRepositoryIdProvider)
 
       val (future, answer) = buildAnswer2(Arguments.apply _)
@@ -418,7 +409,7 @@ class GithubApiClientSpec
 
       githubApiClient.addRepoToTeam(organisation, repoName, 99)
 
-      var args = future.futureValue
+      val args = future.futureValue
       args.teamId                  shouldBe 99
       args.idProvider.generateId() shouldBe "HMRC/test-repo"
     }
@@ -441,7 +432,7 @@ class GithubApiClientSpec
     val message      = "created a file"
 
     "commit the file to the repository, base 64 encoding the contents" in new Setup {
-      val result = githubApiClient.createFile(organisation, repoName, filePath, contents, message).futureValue
+      githubApiClient.createFile(organisation, repoName, filePath, contents, message).futureValue
       Mockito
         .verify(mockContentsService)
         .createFile(organisation, repoName, filePath, "c29tZSBmaWxlIGNvbnRlbnRz", message)
@@ -485,7 +476,7 @@ class GithubApiClientSpec
         fork = true,
         createdAt = fiveDaysAgoDate,
         pushedAt = nowDate,
-        isPrivate = true,
+        `private` = true,
         language = "Scala",
         archived = true
       ))

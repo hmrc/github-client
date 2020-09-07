@@ -43,7 +43,7 @@ class ExtendedRepositoryServiceSpec extends WordSpec with Matchers with MockitoS
         fork = true,
         createdAt = fiveDaysAgoDate,
         pushedAt = nowDate,
-        isPrivate = true,
+        `private` = true,
         language = "Scala",
         archived = true
       )
