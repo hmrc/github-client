@@ -1,7 +1,7 @@
 
 # git-hub-client
 
-[![Build Status](https://travis-ci.org/hmrc/git-hub-client.svg?branch=master)](https://travis-ci.org/hmrc/git-hub-client) [ ![Download](https://api.bintray.com/packages/hmrc/releases/git-hub-client/images/download.svg) ](https://bintray.com/hmrc/releases/git-hub-client/_latestVersion)
+[ ![Download](https://api.bintray.com/packages/hmrc/releases/git-hub-client/images/download.svg) ](https://bintray.com/hmrc/releases/git-hub-client/_latestVersion)
 
 This is a placeholder README.md for a new repository
 
