@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,10 @@ package uk.gov.hmrc.githubclient
 
 import java.io.File
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
-class GitApiConfigTest extends WordSpec with Matchers {
+class GitApiConfigTest extends AnyWordSpecLike with Matchers {
 
   "GitApiConfig" should {
     "load from good config file" in {

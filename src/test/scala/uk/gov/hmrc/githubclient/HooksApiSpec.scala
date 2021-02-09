@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@ package uk.gov.hmrc.githubclient
 import com.google.gson.Gson
 import org.eclipse.egit.github.core.service.RepositoryService
 import org.eclipse.egit.github.core.{IRepositoryIdProvider, RepositoryHook}
-import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.mockito.{ArgumentCaptor, ArgumentMatchersSugar, MockitoSugar}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 import org.scalatest.concurrent.ScalaFutures
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.githubclient.HooksApi.{EditWebHook, NewWebHook}
@@ -29,15 +29,16 @@ import uk.gov.hmrc.githubclient.HookEvent.{PullRequest, Push}
 import uk.gov.hmrc.githubclient.HookName.NonWebHookName
 
 import scala.collection.JavaConverters._
-import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
-import scala.language.postfixOps
 
-class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
+class HooksApiSpec
+  extends AnyWordSpecLike
+     with Matchers
+     with MockitoSugar
+     with ArgumentMatchersSugar
+     with ScalaFutures {
 
   "createWebHook" should {
-
     "add the given hook to the repository" in new Setup {
       val receivedHook: RepositoryHook = new RepositoryHook()
         .setId(1)
@@ -46,50 +47,45 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
         .setUrl("http://github/hook/url/1")
         .setConfig(Map("url" -> "http://webhook.url/1", "content_type" -> "form").asJava)
 
-      (repositoryServiceMock
-        .createHook(_: IRepositoryIdProvider, _: RepositoryHook))
-        .expects(
-          argAssert { provider: IRepositoryIdProvider =>
-            provider.generateId() shouldBe s"$organisation/$repoName"
-          },
-          argAssert { hook: NewWebHook =>
-            hook.getConfig.asScala("url") shouldBe "jenkins_hook_url"
-            hook.getName                  shouldBe "web"
-            hook.isActive                 shouldBe false
-            hook.events                   should contain only (Push.toString, PullRequest.toString)
-          }
-        )
-        .returning(receivedHook)
+      when(repositoryServiceMock.createHook(any[IRepositoryIdProvider], any[RepositoryHook]))
+        .thenReturn(receivedHook)
 
       hooksApi
         .createWebHook(organisation, repoName, config, events, active = false)
         .futureValue shouldBe Hook(
-        HookId(receivedHook.getId),
-        Url(receivedHook.getUrl),
-        HookName.Web,
-        receivedHook.isActive,
-        HookConfig(
-          Url(receivedHook.getConfig.get("url")),
-          Some(HookContentType(receivedHook.getConfig.get("content_type")))
+          id     = HookId(receivedHook.getId),
+          url    = Url(receivedHook.getUrl),
+          name   = HookName.Web,
+          active = receivedHook.isActive,
+          config = HookConfig(
+                     Url(receivedHook.getConfig.get("url")),
+                     Some(HookContentType(receivedHook.getConfig.get("content_type")))
+                   )
         )
-      )
+
+      val repositoryIdProviderCaptor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
+      val repositoryHookCaptor = ArgumentCaptor.forClass(classOf[NewWebHook])
+      verify(repositoryServiceMock).createHook(repositoryIdProviderCaptor.capture(), repositoryHookCaptor.capture())
+
+      repositoryIdProviderCaptor.getValue.generateId() shouldBe s"$organisation/$repoName"
+
+      val hook = repositoryHookCaptor.getValue
+      hook.getConfig.asScala("url") shouldBe "jenkins_hook_url"
+      hook.getName                  shouldBe "web"
+      hook.isActive                 shouldBe false
+      hook.events                   should contain only (Push.toString, PullRequest.toString)
     }
 
     "handle API rate limit error" in new Setup {
-
       val runtimeException = new RuntimeException("api rate limit exceeded")
-      (repositoryServiceMock.createHook _)
-        .expects(*, *)
-        .throwing(runtimeException)
+      when(repositoryServiceMock.createHook(any[IRepositoryIdProvider], any[RepositoryHook]))
+        .thenThrow(runtimeException)
 
-      intercept[APIRateLimitExceededException] {
-        Await.result(hooksApi.createWebHook(organisation, repoName, config), 1 second)
-      } shouldBe APIRateLimitExceededException(runtimeException)
+      hooksApi.createWebHook(organisation, repoName, config).failed.futureValue shouldBe APIRateLimitExceededException(runtimeException)
     }
   }
 
   "editWebHook" should {
-
     "edit the given hook to the repository" in new Setup {
       private val hookId = 123456
 
@@ -101,21 +97,8 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
         .setUrl("http://github/hook/url/1")
         .setConfig(Map("url" -> "http://webhook.url/1", "content_type" -> "form").asJava)
 
-      (repositoryServiceMock
-        .editHook(_: IRepositoryIdProvider, _: RepositoryHook))
-        .expects(
-          argAssert { provider: IRepositoryIdProvider =>
-            provider.generateId() shouldBe s"$organisation/$repoName"
-          },
-          argAssert { hook: EditWebHook =>
-            hook.getId                    shouldBe hookId
-            hook.getConfig.asScala("url") shouldBe "jenkins_hook_url"
-            hook.getName                  shouldBe hookName
-            hook.isActive                 shouldBe true
-            hook.events                   should contain only (Push.toString, PullRequest.toString)
-          }
-        )
-        .returning(receivedHook)
+      when(repositoryServiceMock.editHook(any[IRepositoryIdProvider], any[RepositoryHook]))
+        .thenReturn(receivedHook)
 
       hooksApi
         .editWebHook(organisation, repoName, Hook(HookId(hookId), Url("hook.com"), HookName(hookName), true, config), events)
@@ -127,34 +110,34 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
                                      Url(receivedHook.getConfig.get("url")),
                                      Some(HookContentType(receivedHook.getConfig.get("content_type")))
                                    ))
+      val repositoryIdProviderCaptor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
+      val repositoryHookCaptor = ArgumentCaptor.forClass(classOf[EditWebHook])
+      verify(repositoryServiceMock).editHook(repositoryIdProviderCaptor.capture(), repositoryHookCaptor.capture())
+
+      repositoryIdProviderCaptor.getValue.generateId() shouldBe s"$organisation/$repoName"
+
+      val hook = repositoryHookCaptor.getValue
+      hook.getId                    shouldBe hookId
+      hook.getConfig.asScala("url") shouldBe "jenkins_hook_url"
+      hook.getName                  shouldBe hookName
+      hook.isActive                 shouldBe true
+      hook.events                   should contain only (Push.toString, PullRequest.toString)
     }
 
     "handle API rate limit error" in new Setup {
-
       val runtimeException = new RuntimeException("api rate limit exceeded")
-      (repositoryServiceMock.editHook _)
-        .expects(*, *)
-        .throwing(runtimeException)
+      when(repositoryServiceMock.editHook(any[IRepositoryIdProvider], any[RepositoryHook]))
+        .thenThrow(runtimeException)
 
-      intercept[APIRateLimitExceededException] {
-        Await.result(hooksApi.editWebHook(organisation, repoName, Hook(HookId(12345), Url("hook.com"), HookName("web"), true, config), events), 1 second)
-      } shouldBe APIRateLimitExceededException(runtimeException)
+      hooksApi.editWebHook(organisation, repoName, Hook(HookId(12345), Url("hook.com"), HookName("web"), true, config), events)
+        .failed.futureValue shouldBe APIRateLimitExceededException(runtimeException)
     }
   }
 
   "findHooks" should {
-
     "return all repository's hooks" in new Setup {
-      val receivedHook = new RepositoryHook()
-
-      (repositoryServiceMock
-        .getHooks(_: IRepositoryIdProvider))
-        .expects(
-          argAssert { provider: IRepositoryIdProvider =>
-            provider.generateId() shouldBe s"$organisation/$repoName"
-          }
-        )
-        .returning(
+      when(repositoryServiceMock.getHooks(any[IRepositoryIdProvider]))
+        .thenReturn(
           Seq(
             new RepositoryHook()
               .setId(1)
@@ -174,37 +157,36 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
       hooksApi
         .findHooks(organisation, repoName)
         .futureValue shouldBe Set(
-        Hook(
-          HookId(1),
-          Url("http://github/hook/url/1"),
-          HookName.Web,
-          active = true,
-          HookConfig(Url("http://webhook.url/1"), Some(HookContentType.Form))
-        ),
-        Hook(
-          HookId(2),
-          Url("http://github/hook/url/2"),
-          NonWebHookName("non-web"),
-          active = false,
-          HookConfig(Url("http://webhook.url/2"), Some(HookContentType.Json))
+          Hook(
+            id     = HookId(1),
+            url    = Url("http://github/hook/url/1"),
+            name   = HookName.Web,
+            active = true,
+            config = HookConfig(Url("http://webhook.url/1"), Some(HookContentType.Form))
+          ),
+          Hook(
+            id     = HookId(2),
+            url    = Url("http://github/hook/url/2"),
+            name   = NonWebHookName("non-web"),
+            active = false,
+            config = HookConfig(Url("http://webhook.url/2"), Some(HookContentType.Json))
+          )
         )
-      )
+
+      val repositoryIdProviderCaptor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
+      verify(repositoryServiceMock).getHooks(repositoryIdProviderCaptor.capture())
+      repositoryIdProviderCaptor.getValue.generateId() shouldBe s"$organisation/$repoName"
     }
 
     "handle API rate limit error" in new Setup {
-
       val runtimeException = new RuntimeException("api rate limit exceeded")
-      (repositoryServiceMock.getHooks _)
-        .expects(*)
-        .throwing(runtimeException)
+      when(repositoryServiceMock.getHooks(any[IRepositoryIdProvider]))
+        .thenThrow(runtimeException)
 
-      intercept[APIRateLimitExceededException] {
-        Await.result(hooksApi.findHooks(organisation, repoName), 1 second)
-      } shouldBe APIRateLimitExceededException(runtimeException)
+      hooksApi.findHooks(organisation, repoName).failed.futureValue shouldBe APIRateLimitExceededException(runtimeException)
     }
 
     "ignore travis webhooks" in new Setup {
-
       /*
        * Existing integration with Travis was achieved by using Github Services which is now deprecated.
        * Travis webhooks started to appear in the array of webhooks at some point but the content of each
@@ -212,16 +194,8 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
        * webhooks.
        */
 
-      val resultHook = new RepositoryHook()
-
-      (repositoryServiceMock
-        .getHooks(_: IRepositoryIdProvider))
-        .expects(
-          argAssert { provider: IRepositoryIdProvider =>
-            provider.generateId() shouldBe s"$organisation/$repoName"
-          }
-        )
-        .returning(
+      when(repositoryServiceMock.getHooks(any[IRepositoryIdProvider]))
+        .thenReturn(
           Seq(
             new RepositoryHook()
               .setId(1)
@@ -241,59 +215,52 @@ class HooksApiSpec extends WordSpec with MockFactory with ScalaFutures {
       hooksApi
         .findHooks(organisation, repoName)
         .futureValue shouldBe Set(
-        Hook(
-          HookId(1),
-          Url("http://github/hook/url/1"),
-          HookName.Web,
-          active = true,
-          HookConfig(Url("http://webhook.url/1"), Some(HookContentType.Form))
+          Hook(
+            id     = HookId(1),
+            url    = Url("http://github/hook/url/1"),
+            name   = HookName.Web,
+            active = true,
+            config = HookConfig(Url("http://webhook.url/1"), Some(HookContentType.Form))
+          )
         )
-      )
+
+      val repositoryIdProviderCaptor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
+      verify(repositoryServiceMock).getHooks(repositoryIdProviderCaptor.capture())
+      repositoryIdProviderCaptor.getValue.generateId() shouldBe s"$organisation/$repoName"
     }
   }
 
   "deleteHook" should {
-
     val hookId = HookId(1)
 
     "delete repository hook and return nothing" in new Setup {
-
-      (repositoryServiceMock
-        .deleteHook(_: IRepositoryIdProvider, _: Int))
-        .expects(
-          argAssert { provider: IRepositoryIdProvider =>
-            provider.generateId() shouldBe s"$organisation/$repoName"
-          },
-          hookId.value.toInt
-        )
-
       hooksApi
         .deleteHook(organisation, repoName, hookId)
-        .futureValue shouldBe ()
-    }
+        .futureValue shouldBe (())
+
+      val repositoryIdProviderCaptor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
+      val hookIdCaptor = ArgumentCaptor.forClass(classOf[Int])
+      verify(repositoryServiceMock).deleteHook(repositoryIdProviderCaptor.capture(), hookIdCaptor.capture())
+      repositoryIdProviderCaptor.getValue.generateId() shouldBe s"$organisation/$repoName"
+      hookIdCaptor.getValue                            shouldBe hookId.value.toInt
+      }
 
     "handle API rate limit error" in new Setup {
-
       val runtimeException = new RuntimeException("api rate limit exceeded")
-      (repositoryServiceMock.deleteHook _)
-        .expects(*, *)
-        .throwing(runtimeException)
+      when(repositoryServiceMock.deleteHook(any[IRepositoryIdProvider], any[Int]))
+        .thenThrow(runtimeException)
 
-      intercept[APIRateLimitExceededException] {
-        Await.result(hooksApi.deleteHook(organisation, repoName, hookId), 1 second)
-      } shouldBe APIRateLimitExceededException(runtimeException)
+      hooksApi.deleteHook(organisation, repoName, hookId).failed.futureValue shouldBe APIRateLimitExceededException(runtimeException)
     }
   }
 
   "NewWebHook" should {
-
     "get serialized with all the fields" in new Setup {
       val hookConfig = HookConfig(
         Url("jenkins_hook_url"),
         Some(HookContentType.Form),
         Some(HookSecret("some_secret"))
       )
-
 
       private val repositoryHook: RepositoryHook = NewWebHook(hookConfig, active = true, events)
       val json: JsValue = Json.parse(new Gson().toJson(repositoryHook))

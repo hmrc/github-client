@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,51 +17,55 @@
 package uk.gov.hmrc.githubclient
 
 import org.eclipse.egit.github.core.client.{GitHubClient, GitHubRequest, GitHubResponse}
-import org.mockito.Matchers._
-import org.mockito.{ArgumentCaptor, Mockito}
-import org.scalatest.mock.MockitoSugar
-import org.scalatest.{Matchers, WordSpec}
+import org.mockito.{ArgumentCaptor, ArgumentMatchersSugar, MockitoSugar}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
-class ReleasesServiceSpec extends WordSpec with Matchers with MockitoSugar {
+class ReleasesServiceSpec
+  extends AnyWordSpecLike
+     with Matchers
+     with MockitoSugar
+     with ArgumentMatchersSugar {
 
   "ReleasesService.getReleases" should {
     val githubClient: GitHubClient = mock[GitHubClient]
-
     val releasesService: ReleaseService = new ReleaseService(githubClient)
 
     "return true if it contains content at the given path" in {
-
       val response: GitHubResponse = mock[GitHubResponse]
-
-      Mockito.when(githubClient.get(any[GitHubRequest])).thenReturn(response)
+      when(githubClient.get(any[GitHubRequest]))
+        .thenReturn(response)
+      // mock is returning `""` rather than `null` when not defined. Without this, it will go into an infinite loop, requesting the next page of results
+      when(response.getNext)
+        .thenReturn(null)
 
       releasesService.getReleases("orgA", "repoA")
 
       val captor = ArgumentCaptor.forClass(classOf[GitHubRequest])
 
-      Mockito.verify(githubClient).get(captor.capture())
+      verify(githubClient).get(captor.capture())
 
       captor.getValue.getUri shouldBe "/repos/orgA/repoA/releases"
     }
   }
 
   "ReleasesService.getTags" should {
-
     val githubClient: GitHubClient = mock[GitHubClient]
-
     val releasesService: ReleaseService = new ReleaseService(githubClient)
 
     "return true if it contains content at the given path" in {
-
       val response: GitHubResponse = mock[GitHubResponse]
-
-      Mockito.when(githubClient.get(any[GitHubRequest])).thenReturn(response)
+      when(githubClient.get(any[GitHubRequest]))
+        .thenReturn(response)
+      // mock is returning `""` rather than `null` when not defined. Without this, it will go into an infinite loop, requesting the next page of results
+      when(response.getNext)
+        .thenReturn(null)
 
       releasesService.getTags("orgA", "repoA")
 
       val captor = ArgumentCaptor.forClass(classOf[GitHubRequest])
 
-      Mockito.verify(githubClient).get(captor.capture())
+      verify(githubClient).get(captor.capture())
 
       captor.getValue.getUri shouldBe "/repos/orgA/repoA/tags"
     }

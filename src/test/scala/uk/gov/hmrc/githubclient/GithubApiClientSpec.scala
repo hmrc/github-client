@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,26 +23,26 @@ import java.util.{Base64, Date}
 import org.eclipse.egit.github.core._
 import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.{OrganizationService}
-import org.mockito.Matchers.{any, same}
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
-import org.mockito.{ArgumentCaptor, Mockito}
-import org.scalatest.Matchers._
+import org.mockito.{ArgumentCaptor, ArgumentMatchersSugar, Mockito, MockitoSugar}
+import org.scalatest.{BeforeAndAfterEach, OneInstancePerTest}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{BeforeAndAfterEach, OneInstancePerTest, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
-import scala.language.postfixOps
 
 class GithubApiClientSpec
-    extends WordSpec
-    with MockitoSugar
-    with ScalaFutures
-    with BeforeAndAfterEach
-    with OneInstancePerTest
-    with IntegrationPatience {
+  extends AnyWordSpecLike
+     with Matchers
+     with MockitoSugar
+     with ArgumentMatchersSugar
+     with ScalaFutures
+     with BeforeAndAfterEach
+     with OneInstancePerTest
+     with IntegrationPatience {
 
   val rateLimitException = new RuntimeException("API rate limit exceeded for mr-robot")
 
@@ -64,23 +64,22 @@ class GithubApiClientSpec
     }
   }
 
-  import scala.collection.JavaConversions._
+  import scala.collection.JavaConverters._
 
   "GitHubAPIClient.getOrganisations" should {
-
     "get all organizations" in new Setup {
+      val users: java.util.List[User] =
+        List(new User().setLogin("ORG1").setId(1), new User().setLogin("ORG2").setId(2)).asJava
 
-      val users: java.util.List[User] = List(new User().setLogin("ORG1").setId(1), new User().setLogin("ORG2").setId(2))
-
-      Mockito.when(mockOrgService.getOrganizations).thenReturn(users)
+      when(mockOrgService.getOrganizations)
+        .thenReturn(users)
 
       githubApiClient.getOrganisations.futureValue shouldBe List(GhOrganisation("ORG1", 1), GhOrganisation("ORG2", 2))
-
     }
 
     "handle API rate limit error" in new Setup {
-
-      Mockito.when(mockOrgService.getOrganizations).thenThrow(rateLimitException)
+      when(mockOrgService.getOrganizations)
+        .thenThrow(rateLimitException)
 
       whenReady(githubApiClient.getOrganisations.failed) { e =>
         e shouldBe apiRateLimitExceeded
@@ -89,13 +88,12 @@ class GithubApiClientSpec
   }
 
   "GitHubAPIClient.getTags" should {
-
     "returns list of tags" in new Setup {
-
       val tags: java.util.List[RepositoryTag] =
-        List(new RepositoryTag().setName("tag1"), new RepositoryTag().setName("tag2"))
+        List(new RepositoryTag().setName("tag1"), new RepositoryTag().setName("tag2")).asJava
 
-      Mockito.when(mockRepositoryService.getTags(any[IRepositoryIdProvider])).thenReturn(tags)
+      when(mockRepositoryService.getTags(any[IRepositoryIdProvider]))
+        .thenReturn(tags)
 
       val captor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
 
@@ -103,15 +101,14 @@ class GithubApiClientSpec
 
       resultTags.futureValue shouldBe List("tag1", "tag2")
 
-      Mockito.verify(mockRepositoryService).getTags(captor.capture())
+      verify(mockRepositoryService).getTags(captor.capture())
 
       captor.getValue.generateId() shouldBe "orgA/repoA"
-
     }
 
     "handle API rate limit error" in new Setup {
-
-      Mockito.when(mockRepositoryService.getTags(any[IRepositoryIdProvider])).thenThrow(rateLimitException)
+      when(mockRepositoryService.getTags(any[IRepositoryIdProvider]))
+        .thenThrow(rateLimitException)
 
       whenReady(githubApiClient.getTags("orgA", "repoA").failed) { e =>
         e shouldBe apiRateLimitExceeded
@@ -121,17 +118,18 @@ class GithubApiClientSpec
 
   "GitHubAPIClient.getTeamsForOrganisation" should {
     "get all team for organization" in new Setup {
+      val teams: java.util.List[Team] =
+        List(new Team().setName("Ateam").setId(1)).asJava
 
-      val teams: java.util.List[Team] = List(new Team().setName("Ateam").setId(1))
-
-      Mockito.when(mockTeamService.getTeams("ORG1")).thenReturn(teams)
+      when(mockTeamService.getTeams("ORG1"))
+        .thenReturn(teams)
 
       githubApiClient.getTeamsForOrganisation("ORG1").futureValue shouldBe List(GhTeam("Ateam", 1))
     }
 
     "handle API rate limit error" in new Setup {
-
-      Mockito.when(mockTeamService.getTeams(any[String])).thenThrow(rateLimitException)
+      when(mockTeamService.getTeams(any[String]))
+        .thenThrow(rateLimitException)
 
       whenReady(githubApiClient.getTeamsForOrganisation("some-team").failed) { e =>
         e shouldBe apiRateLimitExceeded
@@ -141,7 +139,6 @@ class GithubApiClientSpec
 
   "GitHubAPIClient.getReposForTeam" should {
     "get all all repos for a team including archived status" in new Setup {
-
       private val nowDate = new Date()
       private val now     = nowDate.getTime
 
@@ -149,26 +146,26 @@ class GithubApiClientSpec
       private val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
       val repos = List(ExtendedRepository(
-        name = "repoA",
+        name        = "repoA",
         description = "some desc",
-        id = 1,
-        htmlUrl = "http://some/html/url",
-        fork = true,
-        createdAt = fiveDaysAgoDate,
-        pushedAt = nowDate,
-        `private` = true,
-        language = "Scala",
-        archived = true
+        id          = 1,
+        htmlUrl     = "http://some/html/url",
+        fork        = true,
+        createdAt   = fiveDaysAgoDate,
+        pushedAt    = nowDate,
+        `private`   = true,
+        language    = "Scala",
+        archived    = true
       ))
 
-      Mockito.when(mockTeamService.getExtendedRepositories(1)).thenReturn(repos)
+      when(mockTeamService.getExtendedRepositories(1))
+        .thenReturn(repos)
 
       githubApiClient.getReposForTeam(1).futureValue shouldBe List(
         GhRepository("repoA", "some desc", 1, "http://some/html/url", true, fiveDaysAgo, now, true, "Scala", true))
     }
 
     "default description and language to empty string" in new Setup {
-
       private val nowDate = new Date()
       private val now     = nowDate.getTime
 
@@ -176,27 +173,28 @@ class GithubApiClientSpec
       private val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
       val repos = List(ExtendedRepository(
-        name = "repoA",
+        name        = "repoA",
         description = null,
-        id = 1,
-        htmlUrl = "http://some/html/url",
-        fork = true,
-        createdAt = fiveDaysAgoDate,
-        pushedAt = nowDate,
-        `private` = false,
-        language = null,
-        archived = false
+        id          = 1,
+        htmlUrl     = "http://some/html/url",
+        fork        = true,
+        createdAt   = fiveDaysAgoDate,
+        pushedAt    = nowDate,
+        `private`   = false,
+        language    = null,
+        archived    = false
       ))
 
-      Mockito.when(mockTeamService.getExtendedRepositories(1)).thenReturn(repos)
+      when(mockTeamService.getExtendedRepositories(1))
+        .thenReturn(repos)
 
       githubApiClient.getReposForTeam(1).futureValue shouldBe List(
         GhRepository("repoA", "", 1, "http://some/html/url", true, fiveDaysAgo, now, false, "", false))
     }
 
     "handle API rate limit error" in new Setup {
-
-      Mockito.when(mockTeamService.getExtendedRepositories(1)).thenThrow(rateLimitException)
+      when(mockTeamService.getExtendedRepositories(1))
+        .thenThrow(rateLimitException)
 
       whenReady(githubApiClient.getReposForTeam(1).failed) { e =>
         e shouldBe apiRateLimitExceeded
@@ -207,20 +205,20 @@ class GithubApiClientSpec
   val captor = ArgumentCaptor.forClass(classOf[IRepositoryIdProvider])
 
   "GitHubAPIClient.repoContainsContent" should {
-
     "return true if it contains content at the given path" in new Setup {
       val path = "folder"
 
       val contents: java.util.List[RepositoryContents] = List(
         new RepositoryContents().setPath("folder"),
         new RepositoryContents().setPath("someOtherfolder")
-      )
+      ).asJava
 
-      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider], same(path))).thenReturn(contents)
+      when(mockContentsService.getContents(any[IRepositoryIdProvider], eqTo(path)))
+        .thenReturn(contents)
 
       githubApiClient.repoContainsContent(path, "repoA", "OrgA").futureValue shouldBe true
 
-      Mockito.verify(mockContentsService).getContents(captor.capture(), same(path))
+      verify(mockContentsService).getContents(captor.capture(), eqTo(path))
 
       captor.getValue.generateId() shouldBe "OrgA/repoA"
     }
@@ -228,24 +226,23 @@ class GithubApiClientSpec
     "return false if it does not contain content at the given path" in new Setup {
       val path = "folder"
 
-      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider], same(path))).thenReturn(List())
+      when(mockContentsService.getContents(any[IRepositoryIdProvider], eqTo(path)))
+        .thenReturn(List().asJava)
 
       githubApiClient.repoContainsContent(path, "repoA", "OrgA").futureValue shouldBe false
     }
 
     "re throw API rate limit exception" in new Setup {
-
-      Mockito.when(mockContentsService.getContents(any(), any())).thenThrow(rateLimitException)
+      when(mockContentsService.getContents(any, any))
+        .thenThrow(rateLimitException)
 
       whenReady(githubApiClient.repoContainsContent("some-path", "repoA", "OrgA").failed) { e =>
         e shouldBe APIRateLimitExceededException(rateLimitException)
       }
-
     }
   }
 
   "GitHubAPIClient.getFileContent" should {
-
     "return content decoded from base64 with line breaks if the file exists" in new Setup {
       val path    = s"folder/file.txt"
       val content = "Some contents"
@@ -255,25 +252,27 @@ class GithubApiClientSpec
           .setPath(path)
           .setName("file.txt")
           .setContent(Base64.getEncoder.encodeToString(content.getBytes(StandardCharsets.UTF_8)) + "\n")
-      )
+      ).asJava
 
-      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider], same(path))).thenReturn(contents)
+      when(mockContentsService.getContents(any[IRepositoryIdProvider], eqTo(path)))
+        .thenReturn(contents)
 
       githubApiClient.getFileContent(path, "repoA", "OrgA").futureValue shouldBe Some(content)
 
-      Mockito.verify(mockContentsService).getContents(captor.capture(), same(path))
+      verify(mockContentsService).getContents(captor.capture(), eqTo(path))
       captor.getValue.generateId() shouldBe "OrgA/repoA"
     }
 
     "return None if the file does not exist" in new Setup {
       val path                                         = s"folder/file.txt"
-      val contents: java.util.List[RepositoryContents] = List()
+      val contents: java.util.List[RepositoryContents] = List().asJava
 
-      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider], same(path))).thenReturn(contents)
+      when(mockContentsService.getContents(any[IRepositoryIdProvider], eqTo(path)))
+        .thenReturn(contents)
 
       githubApiClient.getFileContent(path, "repoA", "OrgA").futureValue shouldBe None
 
-      Mockito.verify(mockContentsService).getContents(captor.capture(), same(path))
+      verify(mockContentsService).getContents(captor.capture(), eqTo(path))
       captor.getValue.generateId() shouldBe "OrgA/repoA"
     }
 
@@ -281,19 +280,19 @@ class GithubApiClientSpec
       val path = s"folder/subfolder"
       val contents: java.util.List[RepositoryContents] = List(
         new RepositoryContents().setPath("folder/subfolder/file1.txt")
-      )
+      ).asJava
 
-      Mockito.when(mockContentsService.getContents(any[IRepositoryIdProvider], same(path))).thenReturn(contents)
+      when(mockContentsService.getContents(any[IRepositoryIdProvider], eqTo(path)))
+        .thenReturn(contents)
 
       githubApiClient.getFileContent(path, "repoA", "OrgA").futureValue shouldBe None
 
-      Mockito.verify(mockContentsService).getContents(captor.capture(), same(path))
+      verify(mockContentsService).getContents(captor.capture(), eqTo(path))
       captor.getValue.generateId() shouldBe "OrgA/repoA"
     }
 
     "re throw API rate limit exception" in new Setup {
-
-      Mockito.when(mockContentsService.getContents(any(), any())).thenThrow(rateLimitException)
+      when(mockContentsService.getContents(any, any)).thenThrow(rateLimitException)
 
       whenReady(githubApiClient.getFileContent("some-path", "repoA", "OrgA").failed) { e =>
         e shouldBe APIRateLimitExceededException(rateLimitException)
@@ -308,20 +307,21 @@ class GithubApiClientSpec
     "return true when the repo exists" in new Setup {
       val repository = new Repository().setName(repoName)
 
-      Mockito.when(mockRepositoryService.getRepository(owner, repoName)).thenReturn(repository)
+      when(mockRepositoryService.getRepository(owner, repoName))
+        .thenReturn(repository)
 
       githubApiClient.containsRepo(owner, repoName).futureValue shouldBe true
     }
 
     "return false when the repo does not exist" in new Setup {
-      Mockito.when(mockRepositoryService.getRepository(owner, repoName)).thenReturn(null)
+      when(mockRepositoryService.getRepository(owner, repoName))
+        .thenReturn(null)
 
       githubApiClient.containsRepo(owner, repoName).futureValue shouldBe false
     }
 
     "throw exception when egit encounters an error" in new Setup {
-      Mockito
-        .when(mockRepositoryService.getRepository(owner, repoName))
+      when(mockRepositoryService.getRepository(owner, repoName))
         .thenThrow(new RequestException(new RequestError(), 500))
 
       intercept[Exception] {
@@ -330,8 +330,8 @@ class GithubApiClientSpec
     }
 
     "re throw API rate limit exception" in new Setup {
-
-      Mockito.when(mockRepositoryService.getRepository(any(), any())).thenThrow(rateLimitException)
+      when(mockRepositoryService.getRepository(any, any))
+        .thenThrow(rateLimitException)
 
       whenReady(githubApiClient.containsRepo("repoA", "OrgA").failed) { e =>
         e shouldBe APIRateLimitExceededException(rateLimitException)
@@ -347,7 +347,8 @@ class GithubApiClientSpec
       val team        = new Team().setId(123).setName(teamName)
       val anotherTeam = new Team().setId(321).setName("another-team")
 
-      Mockito.when(mockTeamService.getTeams(organisation)).thenReturn(List(team, anotherTeam))
+      when(mockTeamService.getTeams(organisation))
+        .thenReturn(List(team, anotherTeam).asJava)
 
       githubApiClient.teamId(organisation, teamName).futureValue.get shouldBe 123
     }
@@ -355,14 +356,15 @@ class GithubApiClientSpec
     "return None when the team does not exist" in new Setup {
       val anotherTeam = new Team().setId(321).setName("another-team")
 
-      Mockito.when(mockTeamService.getTeams(organisation)).thenReturn(List(anotherTeam))
+      when(mockTeamService.getTeams(organisation))
+        .thenReturn(List(anotherTeam).asJava)
 
       githubApiClient.teamId(organisation, teamName).futureValue shouldBe None
     }
 
     "handle API rate limit error" in new Setup {
-
-      Mockito.when(mockTeamService.getTeams(organisation)).thenThrow(rateLimitException)
+      when(mockTeamService.getTeams(organisation))
+        .thenThrow(rateLimitException)
 
       whenReady(githubApiClient.teamId(organisation, teamName).failed) { e =>
         e shouldBe apiRateLimitExceeded
@@ -378,16 +380,15 @@ class GithubApiClientSpec
     "return the clone url for a successfully created repo" in new Setup {
       val repository = new Repository().setName(repoName).setCloneUrl(cloneUrl)
 
-      Mockito.when(mockRepositoryService.createRepository(same(organisation), any[Repository])).thenReturn(repository)
+      when(mockRepositoryService.createRepository(eqTo(organisation), any[Repository]))
+        .thenReturn(repository)
 
       val createdUrl = githubApiClient.createRepo(organisation, repoName).futureValue
       createdUrl shouldBe cloneUrl
     }
 
     "handle API rate limit error" in new Setup {
-
-      Mockito
-        .when(mockRepositoryService.createRepository(same(organisation), any[Repository]))
+      when(mockRepositoryService.createRepository(eqTo(organisation), any[Repository]))
         .thenThrow(rateLimitException)
 
       whenReady(githubApiClient.createRepo(organisation, repoName).failed) { e =>
@@ -405,7 +406,7 @@ class GithubApiClientSpec
 
       val (future, answer) = buildAnswer2(Arguments.apply _)
 
-      Mockito.when(mockTeamService.addRepository(any(), any())).thenAnswer(answer)
+      Mockito.when(mockTeamService.addRepository(any, any)).thenAnswer(answer)
 
       githubApiClient.addRepoToTeam(organisation, repoName, 99)
 
@@ -415,8 +416,8 @@ class GithubApiClientSpec
     }
 
     "handle API rate limit error" in new Setup {
-
-      Mockito.when(mockTeamService.addRepository(any(), any())).thenThrow(rateLimitException)
+      when(mockTeamService.addRepository(any, any))
+        .thenThrow(rateLimitException)
 
       whenReady(githubApiClient.addRepoToTeam(organisation, repoName, 99).failed) { e =>
         e shouldBe apiRateLimitExceeded
@@ -433,8 +434,7 @@ class GithubApiClientSpec
 
     "commit the file to the repository, base 64 encoding the contents" in new Setup {
       githubApiClient.createFile(organisation, repoName, filePath, contents, message).futureValue
-      Mockito
-        .verify(mockContentsService)
+      verify(mockContentsService)
         .createFile(organisation, repoName, filePath, "c29tZSBmaWxlIGNvbnRlbnRz", message)
     }
 
@@ -445,9 +445,7 @@ class GithubApiClientSpec
     }
 
     "handle API rate limit error" in new Setup {
-
-      Mockito
-        .when(mockContentsService.createFile(organisation, repoName, filePath, "c29tZSBmaWxlIGNvbnRlbnRz", message))
+      when(mockContentsService.createFile(organisation, repoName, filePath, "c29tZSBmaWxlIGNvbnRlbnRz", message))
         .thenThrow(rateLimitException)
 
       whenReady(githubApiClient.createFile(organisation, repoName, filePath, contents, message).failed) { e =>
@@ -457,11 +455,9 @@ class GithubApiClientSpec
   }
 
   "GitHubAPIClient.getReposForOrg" should {
-
     val organisation = "HMRC"
 
     "get all repos for org" in new Setup {
-
       private val nowDate = new Date()
       private val now     = nowDate.getTime
 
@@ -469,20 +465,19 @@ class GithubApiClientSpec
       private val fiveDaysAgoDate = new Date(fiveDaysAgo)
 
       val repos = List(ExtendedRepository(
-        name = "repoA",
+        name        = "repoA",
         description = "some desc",
-        id = 1,
-        htmlUrl = "http://some/html/url",
-        fork = true,
-        createdAt = fiveDaysAgoDate,
-        pushedAt = nowDate,
-        `private` = true,
-        language = "Scala",
-        archived = true
+        id          = 1,
+        htmlUrl     = "http://some/html/url",
+        fork        = true,
+        createdAt   = fiveDaysAgoDate,
+        pushedAt    = nowDate,
+        `private`   = true,
+        language    = "Scala",
+        archived    = true
       ))
 
-      Mockito
-        .when(mockRepositoryService.getOrgExtendedRepositories(organisation))
+      when(mockRepositoryService.getOrgExtendedRepositories(organisation))
         .thenReturn(repos)
 
       githubApiClient.getReposForOrg(organisation).futureValue shouldBe List(
@@ -490,16 +485,15 @@ class GithubApiClientSpec
     }
 
     "return empty list when no repos exists" in new Setup {
-      Mockito
-        .when(mockRepositoryService.getOrgExtendedRepositories(organisation))
+      when(mockRepositoryService.getOrgExtendedRepositories(organisation))
         .thenReturn(List())
 
       githubApiClient.getReposForOrg(organisation).futureValue shouldBe List()
     }
 
     "handle API rate limit error" in new Setup {
-
-      Mockito.when(mockTeamService.getExtendedRepositories(1)).thenThrow(rateLimitException)
+      when(mockTeamService.getExtendedRepositories(1))
+        .thenThrow(rateLimitException)
 
       whenReady(githubApiClient.getReposForTeam(1).failed) { e =>
         e shouldBe apiRateLimitExceeded

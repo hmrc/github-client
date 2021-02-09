@@ -5,8 +5,8 @@ val appName = "github-client"
 lazy val library = Project(appName, file("."))
   .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning, SbtArtifactory)
   .settings(
-    majorVersion := 2,
-    crossScalaVersions := Seq("2.11.12", "2.12.8"),
+    majorVersion := 3,
+    scalaVersion := "2.12.12",
     makePublicallyAvailableOnBintray := true,
     libraryDependencies ++= LibDependencies.compile ++ LibDependencies.test
   )
