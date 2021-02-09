@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,33 +19,32 @@ package uk.gov.hmrc.githubclient
 import java.util
 
 import org.eclipse.egit.github.core.client.{GitHubClient, GitHubResponse}
-import org.mockito.Matchers.{any, eq => meq}
-import org.mockito.{ArgumentCaptor, Mockito}
-import org.scalatest.mock.MockitoSugar
-import org.scalatest.{Matchers, WordSpec}
+import org.mockito.{ArgumentCaptor, ArgumentMatchersSugar, MockitoSugar}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
-class ExtendedContentsServiceSpec extends WordSpec with Matchers with MockitoSugar {
+class ExtendedContentsServiceSpec
+  extends AnyWordSpecLike
+     with Matchers
+     with MockitoSugar
+     with ArgumentMatchersSugar {
 
   private val githubClient = mock[GitHubClient]
 
   private val contentsService = new ExtendedContentsService(githubClient)
 
   "ExtendedContentsService.createFile" should {
-
     "send the appropriate request to the github API" in {
-
       val response: GitHubResponse = mock[GitHubResponse]
 
-      Mockito
-        .when(githubClient
-          .put(meq("/repos/orgA/repoA/contents/conf/app.conf"), any[util.HashMap[String, String]](), meq(null)))
+      when(githubClient.put[GitHubResponse](eqTo("/repos/orgA/repoA/contents/conf/app.conf"), any[util.HashMap[String, String]], eqTo(null)))
         .thenReturn(response)
 
       contentsService.createFile("orgA", "repoA", "conf/app.conf", "contents", "message")
 
       val captor = ArgumentCaptor.forClass(classOf[util.HashMap[String, String]])
 
-      Mockito.verify(githubClient).put(meq("/repos/orgA/repoA/contents/conf/app.conf"), captor.capture(), meq(null))
+      verify(githubClient).put(eqTo("/repos/orgA/repoA/contents/conf/app.conf"), captor.capture(), eqTo(null))
 
       val params = captor.getValue
 

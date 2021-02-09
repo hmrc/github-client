@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,13 +24,15 @@ import scala.collection.JavaConverters._
 
 class ExtendedRepositoryService(client: ExtendedGitHubClient) extends RepositoryService(client) {
 
+  println(s"in ExtendedRepositoryService")
+
   // These values are copied from the underlying RespositoryService
   private val pageSize = 100
   private val pageFirst = 1
 
   def getOrgExtendedRepositories(org: String): List[ExtendedRepository] = {
-
-    if (org == null || org.length == 0) throw new IllegalArgumentException("Organization cannot be null or empty")
+    if (org == null || org.length == 0)
+      throw new IllegalArgumentException("Organization cannot be null or empty")
 
     val uri = new StringBuilder("/orgs")
     uri.append('/').append(org)
@@ -41,8 +43,7 @@ class ExtendedRepositoryService(client: ExtendedGitHubClient) extends Repository
         .setUri(uri.toString())
         .setType(new TypeToken[util.List[ExtendedRepository]]() {}.getType)
         .asInstanceOf[PagedRequest[ExtendedRepository]]
-    val pageIterator = createPageIterator(request)
 
-    getAll(pageIterator).asScala.toList
+    getAll(request).asScala.toList
   }
 }

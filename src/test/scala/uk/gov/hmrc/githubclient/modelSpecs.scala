@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,11 @@
 
 package uk.gov.hmrc.githubclient
 
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 import org.scalatest.prop.TableDrivenPropertyChecks
 
-class OrganisationNameSpec extends WordSpec {
-
+class OrganisationNameSpec extends AnyWordSpecLike with Matchers {
   "OrganisationName" should {
     "be a NonEmptyString" in {
       OrganisationName("a") shouldBe a[NonEmptyString]
@@ -29,8 +28,7 @@ class OrganisationNameSpec extends WordSpec {
   }
 }
 
-class RepositoryNameSpec extends WordSpec {
-
+class RepositoryNameSpec extends AnyWordSpecLike with Matchers {
   "RepositoryName" should {
     "be a NonEmptyString" in {
       RepositoryName("a") shouldBe a[NonEmptyString]
@@ -38,8 +36,7 @@ class RepositoryNameSpec extends WordSpec {
   }
 }
 
-class UrlSpec extends WordSpec {
-
+class UrlSpec extends AnyWordSpecLike with Matchers {
   "Url" should {
     "be a NonEmptyString" in {
       Url("a") shouldBe a[NonEmptyString]
@@ -47,8 +44,7 @@ class UrlSpec extends WordSpec {
   }
 }
 
-class HookSecretSpec extends WordSpec {
-
+class HookSecretSpec extends AnyWordSpecLike with Matchers {
   "HookSecret" should {
     "be a NonEmptyString" in {
       HookSecret("a") shouldBe a[NonEmptyString]
@@ -56,10 +52,9 @@ class HookSecretSpec extends WordSpec {
   }
 }
 
-class NonEmptyStringSpec extends WordSpec {
+class NonEmptyStringSpec extends AnyWordSpecLike with Matchers {
 
   "NonEmptyString" should {
-
     "not throw exception when instantiated with a non-empty String" in {
       an[IllegalArgumentException] should be thrownBy new NonEmptyString {
         override def value: String = "  "
@@ -74,37 +69,40 @@ class NonEmptyStringSpec extends WordSpec {
   }
 }
 
-class HookContentTypeSpec extends WordSpec {
+class HookContentTypeSpec extends AnyWordSpecLike with Matchers {
 
   "ContentType.apply" should {
     "return ContentType.Form for 'form'" in {
       HookContentType("form") shouldBe HookContentType.Form
     }
+
     "return ContentType.Json for 'json'" in {
       HookContentType("json") shouldBe HookContentType.Json
     }
+
     "throw an IllegalArgumentException if value is neither 'json' nor 'form'" in {
       an[IllegalArgumentException] should be thrownBy HookContentType("abc")
     }
   }
 }
 
-class HookNameSpec extends WordSpec {
-
+class HookNameSpec extends AnyWordSpecLike with Matchers {
   "HookName.apply" should {
     "return Web if value is 'web'" in {
       HookName("web") shouldBe HookName.Web
     }
+
     "return NonWebHookName if value is different than 'web'" in {
       HookName("abc") shouldBe HookName.NonWebHookName("abc")
     }
+
     "return NonWebHookName which is a NonEmptyString" in {
       HookName("abc") shouldBe a[NonEmptyString]
     }
   }
 }
 
-class HookEventSpec extends WordSpec with TableDrivenPropertyChecks {
+class HookEventSpec extends AnyWordSpecLike with Matchers with TableDrivenPropertyChecks {
 
   import HookEvent._
 
@@ -156,9 +154,11 @@ class HookEventSpec extends WordSpec with TableDrivenPropertyChecks {
         HookEvent(eventName) shouldBe eventType
       }
     }
+
     "return a set of instances of HookNames for a set of known values" in {
       HookEvent("push", "watch") shouldBe Set(Push, Watch)
     }
+
     "throw an IllegalArgumentException if value is not on the list of known events" in {
       an[IllegalArgumentException] should be thrownBy HookEvent("abc")
     }

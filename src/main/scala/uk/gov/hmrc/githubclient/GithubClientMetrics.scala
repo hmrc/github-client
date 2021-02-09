@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 trait GithubClientMetrics {
+  val logger = Logger(getClass)
 
   def metricName: String
 
@@ -38,10 +39,10 @@ trait GithubClientMetrics {
     call.andThen {
       case Success(_) =>
         increment(s"$metricName.$name.success")
-        Logger.trace(s"Increment metric for $metricName.$name.success, path: $path")
+        logger.trace(s"Increment metric for $metricName.$name.success, path: $path")
       case Failure(_) =>
         increment(s"$metricName.$name.failure")
-        Logger.trace(s"Increment metric for $metricName.$name.failure, path: $path")
+        logger.trace(s"Increment metric for $metricName.$name.failure, path: $path")
     }
   }
 }
