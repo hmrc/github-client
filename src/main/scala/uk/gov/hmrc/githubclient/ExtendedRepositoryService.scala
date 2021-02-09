@@ -23,9 +23,6 @@ import org.eclipse.egit.github.core.client.PagedRequest
 import scala.collection.JavaConverters._
 
 class ExtendedRepositoryService(client: ExtendedGitHubClient) extends RepositoryService(client) {
-
-  println(s"in ExtendedRepositoryService")
-
   // These values are copied from the underlying RespositoryService
   private val pageSize = 100
   private val pageFirst = 1

@@ -24,7 +24,6 @@ import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
-//FIXME GC..
 class ExtendedRepositoryServiceSpec
   extends AnyWordSpecLike
      with Matchers

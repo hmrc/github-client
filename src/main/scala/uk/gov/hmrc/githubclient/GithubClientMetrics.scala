@@ -16,13 +16,13 @@
 
 package uk.gov.hmrc.githubclient
 
-import play.api.Logger
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 trait GithubClientMetrics {
-  val logger = Logger(getClass)
+  val logger: Logger = LoggerFactory.getLogger(getClass.getName)
 
   def metricName: String
 

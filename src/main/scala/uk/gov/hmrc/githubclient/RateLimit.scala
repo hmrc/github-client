@@ -17,8 +17,10 @@
 package uk.gov.hmrc.githubclient
 
 import scala.concurrent.{ExecutionContext, Future}
+import org.slf4j.{Logger, LoggerFactory}
 
 private object RateLimit {
+  val logger: Logger = LoggerFactory.getLogger(getClass.getName)
 
   def isRateLimit(e: Throwable): Boolean =
     e.getMessage.toLowerCase.contains("api rate limit exceeded")
@@ -31,7 +33,7 @@ private object RateLimit {
   }
 
   def rateLimitError[T](e: Throwable): T = {
-    Log.error("=== API rate limit has been reached ===", e)
+    logger.error("=== API rate limit has been reached ===", e)
     throw APIRateLimitExceededException(e)
   }
 }
