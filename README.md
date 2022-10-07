@@ -1,9 +1,9 @@
 
 # git-hub-client
 
-[ ![Download](https://api.bintray.com/packages/hmrc/releases/git-hub-client/images/download.svg) ](https://bintray.com/hmrc/releases/git-hub-client/_latestVersion)
+## Deprecated
 
-A wrapper around `org.eclipse.egit.github.core` for Scala.
+A wrapper around `org.eclipse.egit.github.core` for Scala, however we felt it didn't offer enough value to justify maintaining. Instead use the official client directly.
 
 ### License
 
